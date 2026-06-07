@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+*.log
+.DS_Store
+.vercel
+.turbo
+coverage/
+
+# tool-managed skill caches (reproduzíveis a partir de skills-lock.json)
+.claude/
+.agents/
