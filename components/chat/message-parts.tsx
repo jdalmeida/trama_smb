@@ -27,6 +27,8 @@ const TOOL_STATE_STYLE: Record<string, string> = {
 /** Nomes amigáveis para as tools conhecidas. */
 const TOOL_NOME: Record<string, string> = {
   delegarTarefa: 'Delegar tarefa',
+  delegarPlano: 'Delegar plano',
+  proporPlano: 'Propor plano',
   salvarPerfil: 'Salvar perfil',
   lerPerfil: 'Ler perfil',
 };
@@ -181,6 +183,23 @@ function ToolDetalhe({
     if (resumo) {
       return <p className="mt-1 text-xs text-stone-600">{resumo}</p>;
     }
+  }
+
+  // delegarPlano: mensagem amigável quando concluído
+  if (toolName === 'delegarPlano') {
+    if (state === 'output-available' && isRecord(output)) {
+      const itens = Array.isArray(output.itens) ? output.itens.length : 0;
+      return (
+        <p className="mt-1 text-xs text-stone-600">
+          Plano enviado para o time
+          {itens ? ` (${itens} ${itens === 1 ? 'tarefa' : 'tarefas'})` : ''}.
+          Acompanhe no painel ao lado.
+        </p>
+      );
+    }
+    return (
+      <p className="mt-1 text-xs text-stone-600">Acionando o time…</p>
+    );
   }
 
   // delegarTarefa: mensagem amigável quando concluído

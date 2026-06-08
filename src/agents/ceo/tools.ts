@@ -4,6 +4,7 @@ import { start } from 'workflow/api';
 import { getDb } from '@/src/db';
 import { deliverables, runs } from '@/src/db/schema';
 import { getProfile, upsertProfile } from '@/src/lib/business';
+import { iniciarPlano } from '@/src/lib/orchestrate';
 import { BusinessProfileSchema } from '@/src/domain/business-profile';
 import { PERSONA_IDS, type PersonaRunInput } from '@/src/domain/persona';
 import { getPersona } from '@/src/agents/registry';
@@ -132,6 +133,47 @@ export function ceoTools(ctx: CeoContext): ToolSet {
           runId,
           personaId,
           persona: persona.nome,
+        };
+      },
+    }),
+
+    delegarPlano: tool({
+      description:
+        'Delega um plano inteiro de uma vez: aciona VÁRIAS personas via o ' +
+        'orquestrador durável (rodam em paralelo). Use quando o plano alinhado ' +
+        'com o usuário envolve 2 ou mais personas. Para uma única persona, ' +
+        'prefira delegarTarefa. Use somente após o perfil salvo e o plano aprovado.',
+      inputSchema: z.object({
+        tarefas: z
+          .array(
+            z.object({
+              personaId: z
+                .enum(PERSONA_IDS)
+                .describe('Qual persona executa esta tarefa'),
+              tarefa: z
+                .string()
+                .describe('Tarefa em linguagem natural, específica para o negócio'),
+            }),
+          )
+          .min(1)
+          .describe('Uma entrada por persona a acionar'),
+      }),
+      execute: async ({ tarefas }) => {
+        const prof = await getProfile(ctx.businessId);
+        if (!prof) {
+          return {
+            ok: false as const,
+            erro:
+              'Perfil do Negócio ainda não foi preenchido. Complete e salve o ' +
+              'perfil antes de delegar o plano.',
+          };
+        }
+
+        const plano = await iniciarPlano(ctx.businessId, prof.profile, tarefas);
+        return {
+          ok: true as const,
+          orchestratorRunId: plano.orchestratorRunId,
+          itens: plano.itens,
         };
       },
     }),

@@ -1,13 +1,15 @@
 import { start } from 'workflow/api';
+import { getDb } from '@/src/db';
+import { runs } from '@/src/db/schema';
 import { personaRunWorkflow } from '@/app/workflows/persona-run';
 import type { OrchestrateInput, PersonaRunInput } from '@/src/domain/persona';
 
 /**
- * Step que dispara um child workflow de persona.
+ * Step que dispara um child workflow de persona E registra o run na tabela
+ * `runs` (para a UI descobrir os runs filhos via GET /api/runs).
  *
  * `start()` não pode ser chamado diretamente dentro de uma função "use workflow",
- * então embrulhamos a chamada num "use step". Retorna o runId do child para que
- * o orquestrador possa coletá-los (e mapeá-los a runs/streams depois).
+ * então embrulhamos a chamada num "use step". Retorna o runId do child.
  */
 async function iniciarPersona(args: PersonaRunInput): Promise<string> {
   'use step';
@@ -16,6 +18,16 @@ async function iniciarPersona(args: PersonaRunInput): Promise<string> {
     deliverableId: args.deliverableId,
   });
   const run = await start(personaRunWorkflow, [args]);
+
+  // Registra o run para a interface conseguir reconectar o stream de status.
+  await getDb().insert(runs).values({
+    businessId: args.businessId,
+    personaId: args.personaId,
+    runId: run.runId,
+    deliverableId: args.deliverableId,
+    status: 'working',
+  });
+
   console.log('[iniciarPersona] fim', { runId: run.runId });
   return run.runId;
 }

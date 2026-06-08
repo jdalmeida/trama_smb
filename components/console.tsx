@@ -12,7 +12,17 @@ export function Console() {
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
 
-  const runs = React.useMemo(() => extrairRuns(messages), [messages]);
+  // Runs derivados do chat (delegarTarefa) — feedback instantâneo.
+  const chatRuns = React.useMemo(() => extrairRuns(messages), [messages]);
+
+  // Runs vindos do banco (GET /api/runs) — descobre os runs filhos do
+  // orquestrador (delegarPlano) e reconecta após refresh. Poll leve.
+  const apiRuns = useApiRuns();
+
+  const runs = React.useMemo(
+    () => mesclarRuns(chatRuns, apiRuns),
+    [chatRuns, apiRuns],
+  );
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
@@ -24,6 +34,63 @@ export function Console() {
       </section>
     </div>
   );
+}
+
+/**
+ * Busca os runs do negócio em GET /api/runs (na montagem + poll leve a cada 5s).
+ * É como os runs filhos do orquestrador (delegarPlano) aparecem no painel, e
+ * como reconectamos os streams após um refresh da página.
+ */
+function useApiRuns(): ActiveRun[] {
+  const [runs, setRuns] = React.useState<ActiveRun[]>([]);
+
+  React.useEffect(() => {
+    let vivo = true;
+    const carregar = async () => {
+      try {
+        const res = await fetch('/api/runs');
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          runs?: {
+            runId: string;
+            personaId: PersonaId;
+            deliverableId: string | null;
+          }[];
+        };
+        if (!vivo) return;
+        const mapeados = (data.runs ?? [])
+          .filter((r) => r.deliverableId)
+          .map((r) => ({
+            runId: r.runId,
+            personaId: r.personaId,
+            deliverableId: r.deliverableId as string,
+          }));
+        setRuns(mapeados);
+      } catch {
+        // silencioso — o painel continua com os runs derivados do chat
+      }
+    };
+    void carregar();
+    const id = setInterval(() => void carregar(), 5000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  return runs;
+}
+
+/** Mescla runs do chat e do banco, deduplicando por runId. */
+function mesclarRuns(a: ActiveRun[], b: ActiveRun[]): ActiveRun[] {
+  const vistos = new Set<string>();
+  const out: ActiveRun[] = [];
+  for (const r of [...a, ...b]) {
+    if (vistos.has(r.runId)) continue;
+    vistos.add(r.runId);
+    out.push(r);
+  }
+  return out;
 }
 
 /**
