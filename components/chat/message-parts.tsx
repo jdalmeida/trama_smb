@@ -161,6 +161,28 @@ function ToolDetalhe({
     return <p className="mt-1 text-xs text-rose-600">{errorText}</p>;
   }
 
+  // Erro "soft" devolvido pela tool (ex.: delegar sem perfil salvo): { ok:false, erro }
+  if (state === 'output-available' && isRecord(output) && output.ok === false) {
+    return (
+      <p className="mt-1 text-xs text-amber-700">
+        {getString(output, 'erro') ?? 'Não foi possível concluir esta ação.'}
+      </p>
+    );
+  }
+
+  // proporPlano: mostra o resumo do plano proposto
+  if (
+    toolName === 'proporPlano' &&
+    state === 'output-available' &&
+    isRecord(output)
+  ) {
+    const plano = isRecord(output.plano) ? output.plano : undefined;
+    const resumo = plano ? getString(plano, 'resumo') : undefined;
+    if (resumo) {
+      return <p className="mt-1 text-xs text-stone-600">{resumo}</p>;
+    }
+  }
+
   // delegarTarefa: mensagem amigável quando concluído
   if (toolName === 'delegarTarefa') {
     if (state === 'output-available' && isRecord(output)) {

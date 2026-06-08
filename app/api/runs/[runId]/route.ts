@@ -36,6 +36,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 
   let deliverable: {
+    id: string;
     titulo: string;
     status: (typeof deliverables.$inferSelect)['status'];
     content: (typeof deliverables.$inferSelect)['content'];
@@ -54,6 +55,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
       .limit(1);
     if (row) {
       deliverable = {
+        id: row.id,
         titulo: row.titulo,
         status: row.status,
         content: row.content,

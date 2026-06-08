@@ -212,11 +212,12 @@ function extrairUltimoPerfil(messages: UIMessage[]): BusinessProfile | null {
 function extrairProfileDeOutput(output: unknown): BusinessProfile | null {
   if (typeof output !== 'object' || output === null) return null;
   const obj = output as Record<string, unknown>;
-  // o output pode ser { profile: {...} } ou já ser o próprio profile
-  const candidato =
-    typeof obj.profile === 'object' && obj.profile !== null
-      ? (obj.profile as Record<string, unknown>)
-      : obj;
+  // o output pode ser { perfil: {...} } (salvarPerfil), { profile: {...} },
+  // ou já ser o próprio profile (lerPerfil retorna o objeto direto).
+  const aninhado =
+    (typeof obj.perfil === 'object' && obj.perfil !== null && obj.perfil) ||
+    (typeof obj.profile === 'object' && obj.profile !== null && obj.profile);
+  const candidato = (aninhado || obj) as Record<string, unknown>;
   if (typeof candidato.nomeNegocio === 'string') {
     return candidato as unknown as BusinessProfile;
   }

@@ -70,6 +70,32 @@ components/     UI (chat, painel "Time")
 | `pnpm db:generate` / `pnpm db:migrate` | Migrações versionadas |
 | `pnpm db:studio` | Drizzle Studio |
 
+## Provisionar serviços (Vercel Marketplace)
+
+Os três serviços têm provisionamento nativo na Vercel:
+
+- **Neon (Postgres)** — Vercel → Storage → Neon. Injeta `DATABASE_URL` (pooled) e
+  `DATABASE_URL_UNPOOLED` (direto, usado nas migrações).
+- **Clerk (auth)** — Vercel → Integrations → Clerk. Injeta
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY`.
+- **AI Gateway** — Vercel → AI → AI Gateway. Em produção o `VERCEL_OIDC_TOKEN` é
+  automático; localmente use `AI_GATEWAY_API_KEY` (rode `vercel env pull` para
+  sincronizar).
+
+Em produção os Workflows são totalmente gerenciados (Vercel Functions + Queues),
+sem configuração extra. Em dev, `pnpm dev` já executa os steps/workflows; use
+`npx workflow web` para observar os runs.
+
+## Fluxo de demonstração
+
+1. Faça login (Clerk).
+2. No chat, conte sobre o negócio. O **CEO** entrevista e, ao ter o suficiente,
+   salva o **Perfil do Negócio** — confirme no card.
+3. Peça ajuda (ex.: "quero atrair mais clientes"). O CEO **propõe um plano** e,
+   com seu ok, **delega** à persona **Conteúdo & Aquisição**.
+4. No painel **Time** (à direita) a persona aparece **trabalhando** ao vivo; ao
+   concluir, abra **Ver entregável** (plano de conteúdo e canais).
+
 ## Princípios de produto
 
 - Produto em **português brasileiro**.
