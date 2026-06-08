@@ -27,3 +27,10 @@ export type PersonaStatusEvent =
   | { kind: 'status'; personaId: PersonaId; status: PersonaStatus; mensagem?: string }
   | { kind: 'atividade'; personaId: PersonaId; texto: string }
   | { kind: 'entregavel'; personaId: PersonaId; deliverableId: string };
+
+/** Entrada do workflow orquestrador (Fase 3): roda várias personas. */
+export interface OrchestrateInput {
+  businessId: string;
+  profile: BusinessProfile;
+  tarefas: { personaId: PersonaId; tarefa: string; deliverableId: string }[];
+}
