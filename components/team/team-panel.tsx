@@ -10,6 +10,7 @@ import type {
 } from '@/src/domain/persona';
 import type { DeliverableContent } from '@/src/domain/deliverable';
 import { PersonaCard } from '@/components/team/persona-card';
+import { DeliverableView } from '@/components/deliverable/deliverable-view';
 import { Button } from '@/components/ui/button';
 
 /** Um run delegado, derivado das mensagens do chat. */
@@ -25,7 +26,7 @@ interface RunState {
   deliverableId?: string;
 }
 
-interface DeliverableView {
+interface DeliverableData {
   id: string;
   titulo: string;
   status: string;
@@ -43,7 +44,7 @@ export function TeamPanel({ runs }: TeamPanelProps) {
   >({});
   // Entregáveis carregados (por deliverableId) e qual está aberto.
   const [deliverables, setDeliverables] = React.useState<
-    Record<string, DeliverableView | undefined>
+    Record<string, DeliverableData | undefined>
   >({});
   const [aberto, setAberto] = React.useState<string | null>(null);
 
@@ -61,8 +62,8 @@ export function TeamPanel({ runs }: TeamPanelProps) {
     try {
       const res = await fetch(`/api/runs/${runId}`);
       if (!res.ok) return;
-      const data = (await res.json()) as { deliverable?: DeliverableView } & DeliverableView;
-      const d = (data.deliverable ?? data) as DeliverableView | undefined;
+      const data = (await res.json()) as { deliverable?: DeliverableData } & DeliverableData;
+      const d = (data.deliverable ?? data) as DeliverableData | undefined;
       if (d && d.id) {
         setDeliverables((prev) => ({ ...prev, [d.id]: d }));
       }
@@ -203,8 +204,11 @@ export function TeamPanel({ runs }: TeamPanelProps) {
 function DeliverableSummary({
   deliverable,
 }: {
-  deliverable: DeliverableView | undefined;
+  deliverable: DeliverableData | undefined;
 }) {
+  // Alterna entre o resumo curto e a visão completa do entregável.
+  const [completo, setCompleto] = React.useState(false);
+
   if (!deliverable) {
     return (
       <p className="text-xs text-[var(--color-muted)]">
@@ -222,49 +226,103 @@ function DeliverableSummary({
       </p>
       {!content ? (
         <p className="text-[var(--color-muted)]">Sem conteúdo ainda.</p>
-      ) : content.tipo === 'plano-conteudo' ? (
-        <div className="space-y-2 text-stone-700">
-          <p>{content.resumo}</p>
-          {content.canais?.length ? (
-            <div>
-              <p className="font-medium text-[var(--color-ink)]">Canais</p>
-              <ul className="ml-4 list-disc">
-                {content.canais.map((c, i) => (
-                  <li key={i}>
-                    <span className="font-medium">{c.canal}</span> —{' '}
-                    {c.frequencia}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {content.ideiasProntas?.length ? (
-            <p className="text-[var(--color-muted)]">
-              {content.ideiasProntas.length} ideias prontas no plano completo.
-            </p>
-          ) : null}
-        </div>
-      ) : content.tipo === 'pesquisa-mercado' ? (
-        <div className="space-y-2 text-stone-700">
-          <p>{content.panorama}</p>
-          {content.concorrentes?.length ? (
-            <div>
-              <p className="font-medium text-[var(--color-ink)]">
-                Concorrentes
-              </p>
-              <ul className="ml-4 list-disc">
-                {content.concorrentes.map((c, i) => (
-                  <li key={i}>
-                    <span className="font-medium">{c.nome}</span> — {c.oQueFazem}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
+      ) : completo ? (
+        <DeliverableView content={content} />
       ) : (
-        <p className="whitespace-pre-wrap text-stone-700">{content.texto}</p>
+        <ResumoCurto content={content} />
       )}
+      {content ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setCompleto((v) => !v)}
+        >
+          {completo ? 'Ver só o resumo' : 'Ver entregável completo'}
+        </Button>
+      ) : null}
     </div>
   );
+}
+
+/** Resumo curto por tipo de entregável (a visão rica fica em DeliverableView). */
+function ResumoCurto({ content }: { content: DeliverableContent }) {
+  if (content.tipo === 'plano-conteudo') {
+    return (
+      <div className="space-y-2 text-stone-700">
+        <p>{content.resumo}</p>
+        {content.canais?.length ? (
+          <div>
+            <p className="font-medium text-[var(--color-ink)]">Canais</p>
+            <ul className="ml-4 list-disc">
+              {content.canais.map((c, i) => (
+                <li key={i}>
+                  <span className="font-medium">{c.canal}</span> —{' '}
+                  {c.frequencia}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {content.ideiasProntas?.length ? (
+          <p className="text-[var(--color-muted)]">
+            {content.ideiasProntas.length} ideias prontas no plano completo.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (content.tipo === 'pesquisa-mercado') {
+    return (
+      <div className="space-y-2 text-stone-700">
+        <p>{content.panorama}</p>
+        {content.concorrentes?.length ? (
+          <div>
+            <p className="font-medium text-[var(--color-ink)]">Concorrentes</p>
+            <ul className="ml-4 list-disc">
+              {content.concorrentes.map((c, i) => (
+                <li key={i}>
+                  <span className="font-medium">{c.nome}</span> — {c.oQueFazem}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (content.tipo === 'plano-prospeccao') {
+    return (
+      <div className="space-y-2 text-stone-700">
+        <p>{content.resumo}</p>
+        {content.oportunidades?.length ? (
+          <div>
+            <p className="font-medium text-[var(--color-ink)]">
+              Oportunidades
+            </p>
+            <ul className="ml-4 list-disc">
+              {content.oportunidades.map((o, i) => (
+                <li key={i}>
+                  <span className="font-medium">{o.nome}</span> — {o.tipo}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {content.roteirosAbordagem?.length ? (
+          <p className="text-[var(--color-muted)]">
+            {content.roteirosAbordagem.length} roteiros de abordagem no plano
+            completo.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (content.tipo === 'texto') {
+    return <p className="whitespace-pre-wrap text-stone-700">{content.texto}</p>;
+  }
+
+  return <p className="text-[var(--color-muted)]">Veja o entregável completo.</p>;
 }

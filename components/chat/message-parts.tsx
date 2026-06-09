@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { isToolUIPart, type UIMessage } from 'ai';
+import { Streamdown } from 'streamdown';
 
 /** Estado de uma tool part, mapeado para rótulo + cor em pt-BR. */
 const TOOL_STATE_LABEL: Record<string, string> = {
@@ -62,10 +63,18 @@ export function MessageParts({ message }: MessagePartsProps) {
       >
         {message.parts.map((part, i) => {
           if (part.type === 'text') {
+            // Usuário: texto puro. Assistente: markdown renderizado (streamdown).
+            if (isUser) {
+              return (
+                <p key={i} className="whitespace-pre-wrap">
+                  {part.text}
+                </p>
+              );
+            }
             return (
-              <p key={i} className="whitespace-pre-wrap">
+              <Streamdown key={i} className="space-y-2">
                 {part.text}
-              </p>
+              </Streamdown>
             );
           }
 

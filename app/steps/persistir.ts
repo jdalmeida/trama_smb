@@ -8,6 +8,7 @@ import { buildInstructions } from '@/src/lib/skills';
 import {
   ContentPlanSchema,
   MarketResearchSchema,
+  ProspectingPlanSchema,
   type DeliverableContent,
 } from '@/src/domain/deliverable';
 import type {
@@ -145,8 +146,11 @@ export async function extrairEntregavel(args: {
   console.log('[extrairEntregavel] início', { personaId: args.personaId });
 
   const ehConteudo = args.personaId === 'conteudo-aquisicao';
+  const ehVendas = args.personaId === 'vendas-prospeccao';
 
-  const system = ehConteudo
+  const system = ehVendas
+    ? 'Você organiza o rascunho de um especialista em prospecção num plano estruturado, em português brasileiro. Liste somente oportunidades/canais PÚBLICOS presentes no rascunho — nunca contatos pessoais (e-mails/telefones de pessoas físicas) nem outreach automatizado; o contato é sempre feito pelo dono. Seja fiel ao rascunho e não invente fatos.'
+    : ehConteudo
     ? 'Você organiza o rascunho de um especialista em conteúdo e aquisição num plano estruturado, em português brasileiro. Seja concreto e fiel ao rascunho; não invente fatos.'
     : 'Você organiza o rascunho de um especialista em pesquisa de mercado numa pesquisa estruturada, em português brasileiro. Use somente informações de fontes públicas presentes no rascunho; cite URLs quando houver e não invente dados.';
 
@@ -162,6 +166,17 @@ export async function extrairEntregavel(args: {
     '',
     'Organize o conteúdo acima no formato estruturado solicitado, em português brasileiro.',
   ].join('\n');
+
+  if (ehVendas) {
+    const r = await generateText({
+      model: modelFor('worker'),
+      system,
+      prompt,
+      output: Output.object({ schema: ProspectingPlanSchema }),
+    });
+    console.log('[extrairEntregavel] fim', { personaId: args.personaId });
+    return { tipo: 'plano-prospeccao', ...r.output };
+  }
 
   if (ehConteudo) {
     const r = await generateText({

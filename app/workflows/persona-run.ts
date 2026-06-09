@@ -1,8 +1,10 @@
-import { getWritable } from 'workflow';
+import { getWritable, getWorkflowMetadata } from 'workflow';
 import type { UIMessageChunk, ModelMessage } from 'ai';
 import { getConteudoAgent } from '@/src/agents/personas/conteudo-aquisicao/agent';
 import { getPesquisaAgent } from '@/src/agents/personas/pesquisa-mercado/agent';
+import { getVendasAgent } from '@/src/agents/personas/vendas-prospeccao/agent';
 import {
+  atualizarRunStatus,
   carregarInstrucoes,
   emitirStatus,
   extrairEntregavel,
@@ -41,6 +43,10 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
 }> {
   'use workflow';
 
+  // runId deste run de Workflow — é o mesmo valor gravado em runs.run_id
+  // quando o CEO delega (start() → run.runId).
+  const { workflowRunId } = getWorkflowMetadata();
+
   try {
     await emitirStatus({
       kind: 'status',
@@ -55,7 +61,9 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
     const agent =
       input.personaId === 'conteudo-aquisicao'
         ? getConteudoAgent(instructions)
-        : getPesquisaAgent(instructions);
+        : input.personaId === 'vendas-prospeccao'
+          ? getVendasAgent(instructions)
+          : getPesquisaAgent(instructions);
 
     // Stream default do run: narração do worker (UIMessageChunk).
     const writable = getWritable<UIMessageChunk>();
@@ -85,6 +93,7 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
     });
 
     await salvarEntregavel(input.deliverableId, content);
+    await atualizarRunStatus(workflowRunId, 'done');
 
     await emitirStatus({
       kind: 'entregavel',
@@ -100,6 +109,7 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
 
     return { deliverableId: input.deliverableId };
   } catch (err) {
+    await atualizarRunStatus(workflowRunId, 'error');
     await emitirStatus({
       kind: 'status',
       personaId: input.personaId,
