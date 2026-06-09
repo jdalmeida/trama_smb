@@ -31,6 +31,15 @@ export const PERSONAS: Record<PersonaId, PersonaConfig> = {
     skillFile: 'pesquisa-mercado',
     modelTier: 'worker',
   },
+  'vendas-prospeccao': {
+    id: 'vendas-prospeccao',
+    nome: 'Vendas / Prospecção',
+    descricao:
+      'Mapeia oportunidades públicas de captação (eventos, feiras, marketplaces, parcerias) e monta um plano de prospecção priorizado — o contato é sempre feito pelo dono.',
+    emoji: '🤝',
+    skillFile: 'vendas-prospeccao',
+    modelTier: 'worker',
+  },
 };
 
 export const PERSONA_LIST: PersonaConfig[] = Object.values(PERSONAS);

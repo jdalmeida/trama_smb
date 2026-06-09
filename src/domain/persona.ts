@@ -1,7 +1,11 @@
 import type { BusinessProfile } from './business-profile';
 
 /** IDs das personas disponíveis (workers). */
-export const PERSONA_IDS = ['conteudo-aquisicao', 'pesquisa-mercado'] as const;
+export const PERSONA_IDS = [
+  'conteudo-aquisicao',
+  'pesquisa-mercado',
+  'vendas-prospeccao',
+] as const;
 export type PersonaId = (typeof PERSONA_IDS)[number];
 
 /** Estado de uma persona/entregável, exibido no painel "Time". */
