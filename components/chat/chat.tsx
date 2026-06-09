@@ -6,6 +6,11 @@ import type { BusinessProfile } from '@/src/domain/business-profile';
 import { MessageParts } from '@/components/chat/message-parts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SendIcon, type SendIconHandle } from '@/components/ui/send';
+import { LoaderIcon, type LoaderIconHandle } from '@/components/ui/loader';
+import { SparklesIcon } from '@/components/ui/sparkles';
 
 type ChatStatus = 'submitted' | 'streaming' | 'ready' | 'error';
 
@@ -25,6 +30,8 @@ export function Chat({
 }: ChatProps) {
   const [input, setInput] = React.useState('');
   const bottomRef = React.useRef<HTMLDivElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const sendIconRef = React.useRef<SendIconHandle | null>(null);
 
   const ocupado = status === 'submitted' || status === 'streaming';
 
@@ -41,6 +48,8 @@ export function Chat({
     const texto = input.trim();
     if (!texto || ocupado) return;
     setInput('');
+    sendIconRef.current?.startAnimation();
+    window.setTimeout(() => sendIconRef.current?.stopAnimation(), 800);
     await sendMessage({ text: texto });
   }
 
@@ -51,16 +60,19 @@ export function Chat({
     }
   }
 
+  function usarSugestao(texto: string) {
+    setInput(texto);
+    textareaRef.current?.focus();
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-1">
         {messages.length === 0 ? (
           carregandoHistorico ? (
-            <p className="px-2 py-4 text-xs text-[var(--color-muted)]">
-              Carregando conversa…
-            </p>
+            <CarregandoConversa />
           ) : (
-            <EstadoVazio />
+            <EstadoVazio onSugestao={usarSugestao} />
           )
         ) : (
           messages.map((m) => <MessageParts key={m.id} message={m} />)
@@ -68,11 +80,9 @@ export function Chat({
 
         {profile ? <ProfileCard profile={profile} /> : null}
 
-        {status === 'submitted' ? (
-          <p className="px-2 text-xs text-[var(--color-muted)]">Pensando…</p>
-        ) : null}
+        {status === 'submitted' ? <IndicadorPensando /> : null}
         {status === 'error' ? (
-          <p className="px-2 text-xs text-rose-600">
+          <p className="px-2 text-xs text-destructive">
             Algo deu errado. Tente enviar novamente.
           </p>
         ) : null}
@@ -80,34 +90,104 @@ export function Chat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="mt-3 flex items-end gap-2 border-t border-black/5 pt-3">
-        <textarea
+      <div className="mt-3 flex items-end gap-2 border-t border-border pt-3">
+        <Textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           rows={2}
           placeholder="Conte sobre seu negócio ou peça uma tarefa ao time…"
-          className="min-h-[44px] flex-1 resize-none rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-brand)] focus:ring-1 focus:ring-[var(--color-brand)]"
+          className="max-h-40 min-h-11 flex-1 resize-none"
+          aria-label="Mensagem para o CEO"
         />
-        <Button onClick={() => void enviar()} disabled={ocupado || !input.trim()}>
-          Enviar
+        <Button
+          size="icon-lg"
+          onClick={() => void enviar()}
+          disabled={ocupado || !input.trim()}
+          aria-label="Enviar mensagem"
+        >
+          <SendIcon ref={sendIconRef} size={16} aria-hidden />
         </Button>
       </div>
     </div>
   );
 }
 
-function EstadoVazio() {
+/** Skeleton exibido enquanto o histórico do chat é carregado. */
+function CarregandoConversa() {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="text-3xl">🧵</div>
-      <h2 className="mt-3 text-base font-semibold text-[var(--color-ink)]">
+    <div className="space-y-4 px-1 py-2" aria-label="Carregando conversa">
+      <div className="flex items-start gap-2">
+        <Skeleton className="size-8 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-48 rounded-md" />
+          <Skeleton className="h-4 w-64 rounded-md" />
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Skeleton className="h-10 w-52 rounded-2xl" />
+      </div>
+      <div className="flex items-start gap-2">
+        <Skeleton className="size-8 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-60 rounded-md" />
+          <Skeleton className="h-4 w-40 rounded-md" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Indicador de "pensando" enquanto o CEO prepara a resposta. */
+function IndicadorPensando() {
+  const loaderRef = React.useRef<LoaderIconHandle | null>(null);
+
+  React.useEffect(() => {
+    loaderRef.current?.startAnimation();
+    return () => loaderRef.current?.stopAnimation();
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground animate-in fade-in duration-300">
+      <LoaderIcon ref={loaderRef} size={14} aria-hidden />
+      <span>Pensando…</span>
+    </div>
+  );
+}
+
+const SUGESTOES = [
+  'Tenho uma loja de roupas em Curitiba',
+  'Quero entender meu mercado',
+  'Preciso de clientes novos',
+];
+
+function EstadoVazio({ onSugestao }: { onSugestao: (texto: string) => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <SparklesIcon size={24} aria-hidden />
+      </div>
+      <h2 className="mt-4 text-base font-semibold text-foreground">
         Vamos montar seu time
       </h2>
-      <p className="mt-1 max-w-sm text-sm text-[var(--color-muted)]">
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
         Conte sobre seu negócio: o que você vende, para quem e onde atua. A
         partir daí eu organizo o perfil e aciono os agentes certos.
       </p>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        {SUGESTOES.map((sugestao) => (
+          <Button
+            key={sugestao}
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => onSugestao(sugestao)}
+          >
+            {sugestao}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -132,7 +212,7 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
   }
 
   return (
-    <Card className="border-[var(--color-brand)]/30">
+    <Card className="ring-primary/30 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <CardHeader>
         <CardTitle>Perfil do Negócio</CardTitle>
       </CardHeader>
@@ -158,10 +238,10 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
             {estado === 'ok' ? 'Perfil confirmado' : 'Confirmar perfil'}
           </Button>
           {estado === 'enviando' ? (
-            <span className="text-xs text-[var(--color-muted)]">Salvando…</span>
+            <span className="text-xs text-muted-foreground">Salvando…</span>
           ) : null}
           {estado === 'erro' ? (
-            <span className="text-xs text-rose-600">
+            <span className="text-xs text-destructive">
               Não foi possível salvar. Tente de novo.
             </span>
           ) : null}
@@ -174,10 +254,10 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
 function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {rotulo}
       </p>
-      <p className="text-[var(--color-ink)]">{valor}</p>
+      <p className="text-foreground">{valor}</p>
     </div>
   );
 }
@@ -186,10 +266,10 @@ function CampoLista({ rotulo, itens }: { rotulo: string; itens: string[] }) {
   if (!itens || itens.length === 0) return null;
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {rotulo}
       </p>
-      <ul className="ml-4 list-disc text-[var(--color-ink)]">
+      <ul className="ml-4 list-disc text-foreground">
         {itens.map((it, i) => (
           <li key={i}>{it}</li>
         ))}

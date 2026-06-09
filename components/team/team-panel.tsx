@@ -12,6 +12,9 @@ import type { DeliverableContent } from '@/src/domain/deliverable';
 import { PersonaCard } from '@/components/team/persona-card';
 import { DeliverableView } from '@/components/deliverable/deliverable-view';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { UsersIcon, type UsersIconHandle } from '@/components/ui/users';
+import { cn } from '@/lib/utils';
 
 /** Um run delegado, derivado das mensagens do chat. */
 export interface ActiveRun {
@@ -153,51 +156,101 @@ export function TeamPanel({ runs }: TeamPanelProps) {
   return (
     <aside className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-[var(--color-ink)]">Time</h2>
-        <span className="text-xs text-[var(--color-muted)]">
+        <h2 className="text-sm font-semibold text-foreground">Time</h2>
+        <span className="text-xs text-muted-foreground">
           {PERSONA_LIST.length} agentes
         </span>
       </div>
 
-      {PERSONA_LIST.map((persona: PersonaConfig) => {
+      {runs.length === 0 ? <EstadoVazio /> : null}
+
+      {PERSONA_LIST.map((persona: PersonaConfig, i) => {
         const estado = byPersona[persona.id];
         const status: PersonaStatus = estado?.status ?? 'idle';
         const deliverableId = estado?.deliverableId;
         const deliverable = deliverableId
           ? deliverables[deliverableId]
           : undefined;
+        const isAberto = aberto === deliverableId;
 
         return (
-          <PersonaCard
+          <div
             key={persona.id}
-            persona={persona}
-            status={status}
-            atividade={estado?.atividade}
+            className="fill-mode-backwards animate-in fade-in slide-in-from-bottom-2 duration-500"
+            style={{ animationDelay: `${i * 90}ms` }}
           >
-            {status === 'done' && deliverableId ? (
-              <div className="space-y-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    setAberto((cur) =>
-                      cur === deliverableId ? null : deliverableId,
-                    )
-                  }
-                >
-                  {aberto === deliverableId
-                    ? 'Ocultar entregável'
-                    : 'Ver entregável'}
-                </Button>
-                {aberto === deliverableId ? (
-                  <DeliverableSummary deliverable={deliverable} />
-                ) : null}
-              </div>
-            ) : null}
-          </PersonaCard>
+            <PersonaCard
+              persona={persona}
+              status={status}
+              atividade={estado?.atividade}
+            >
+              {status === 'done' && deliverableId ? (
+                <div className="flex flex-col">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    aria-expanded={isAberto}
+                    onClick={() =>
+                      setAberto((cur) =>
+                        cur === deliverableId ? null : deliverableId,
+                      )
+                    }
+                  >
+                    {isAberto ? 'Ocultar entregável' : 'Ver entregável'}
+                  </Button>
+                  <div
+                    className={cn(
+                      'grid transition-all duration-300 ease-out',
+                      isAberto
+                        ? 'mt-2 grid-rows-[1fr] opacity-100'
+                        : 'grid-rows-[0fr] opacity-0',
+                    )}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <DeliverableSummary deliverable={deliverable} />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </PersonaCard>
+          </div>
         );
       })}
     </aside>
+  );
+}
+
+/** Estado vazio do painel: nenhum run delegado ainda. */
+function EstadoVazio() {
+  const iconRef = React.useRef<UsersIconHandle>(null);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => iconRef.current?.startAnimation(), 400);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div
+      className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-4 py-8 text-center animate-in fade-in zoom-in-95 duration-500"
+      onMouseEnter={() => iconRef.current?.startAnimation()}
+      onMouseLeave={() => iconRef.current?.stopAnimation()}
+    >
+      <div
+        className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"
+        aria-hidden
+      >
+        <UsersIcon ref={iconRef} size={24} className="flex" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-foreground">
+          Seu time está pronto
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Delegue uma tarefa no chat para ver o time trabalhando.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -211,30 +264,33 @@ function DeliverableSummary({
 
   if (!deliverable) {
     return (
-      <p className="text-xs text-[var(--color-muted)]">
-        Carregando entregável…
-      </p>
+      <p className="text-xs text-muted-foreground">Carregando entregável…</p>
     );
   }
 
   const content = deliverable.content;
 
   return (
-    <div className="space-y-2 rounded-lg border border-black/5 bg-stone-50 p-3 text-xs">
-      <p className="font-semibold text-[var(--color-ink)]">
-        {deliverable.titulo}
-      </p>
+    <div className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-3 text-xs">
+      <p className="font-semibold text-foreground">{deliverable.titulo}</p>
       {!content ? (
-        <p className="text-[var(--color-muted)]">Sem conteúdo ainda.</p>
+        <p className="text-muted-foreground">Sem conteúdo ainda.</p>
       ) : completo ? (
-        <DeliverableView content={content} />
+        <ScrollArea className="h-80 rounded-md">
+          <div className="pr-3 animate-in fade-in duration-300">
+            <DeliverableView content={content} />
+          </div>
+        </ScrollArea>
       ) : (
-        <ResumoCurto content={content} />
+        <div className="animate-in fade-in duration-300">
+          <ResumoCurto content={content} />
+        </div>
       )}
       {content ? (
         <Button
           variant="secondary"
           size="sm"
+          className="self-start"
           onClick={() => setCompleto((v) => !v)}
         >
           {completo ? 'Ver só o resumo' : 'Ver entregável completo'}
@@ -248,11 +304,11 @@ function DeliverableSummary({
 function ResumoCurto({ content }: { content: DeliverableContent }) {
   if (content.tipo === 'plano-conteudo') {
     return (
-      <div className="space-y-2 text-stone-700">
+      <div className="flex flex-col gap-2 text-foreground">
         <p>{content.resumo}</p>
         {content.canais?.length ? (
           <div>
-            <p className="font-medium text-[var(--color-ink)]">Canais</p>
+            <p className="font-medium">Canais</p>
             <ul className="ml-4 list-disc">
               {content.canais.map((c, i) => (
                 <li key={i}>
@@ -264,7 +320,7 @@ function ResumoCurto({ content }: { content: DeliverableContent }) {
           </div>
         ) : null}
         {content.ideiasProntas?.length ? (
-          <p className="text-[var(--color-muted)]">
+          <p className="text-muted-foreground">
             {content.ideiasProntas.length} ideias prontas no plano completo.
           </p>
         ) : null}
@@ -274,11 +330,11 @@ function ResumoCurto({ content }: { content: DeliverableContent }) {
 
   if (content.tipo === 'pesquisa-mercado') {
     return (
-      <div className="space-y-2 text-stone-700">
+      <div className="flex flex-col gap-2 text-foreground">
         <p>{content.panorama}</p>
         {content.concorrentes?.length ? (
           <div>
-            <p className="font-medium text-[var(--color-ink)]">Concorrentes</p>
+            <p className="font-medium">Concorrentes</p>
             <ul className="ml-4 list-disc">
               {content.concorrentes.map((c, i) => (
                 <li key={i}>
@@ -294,13 +350,11 @@ function ResumoCurto({ content }: { content: DeliverableContent }) {
 
   if (content.tipo === 'plano-prospeccao') {
     return (
-      <div className="space-y-2 text-stone-700">
+      <div className="flex flex-col gap-2 text-foreground">
         <p>{content.resumo}</p>
         {content.oportunidades?.length ? (
           <div>
-            <p className="font-medium text-[var(--color-ink)]">
-              Oportunidades
-            </p>
+            <p className="font-medium">Oportunidades</p>
             <ul className="ml-4 list-disc">
               {content.oportunidades.map((o, i) => (
                 <li key={i}>
@@ -311,7 +365,7 @@ function ResumoCurto({ content }: { content: DeliverableContent }) {
           </div>
         ) : null}
         {content.roteirosAbordagem?.length ? (
-          <p className="text-[var(--color-muted)]">
+          <p className="text-muted-foreground">
             {content.roteirosAbordagem.length} roteiros de abordagem no plano
             completo.
           </p>
@@ -321,8 +375,8 @@ function ResumoCurto({ content }: { content: DeliverableContent }) {
   }
 
   if (content.tipo === 'texto') {
-    return <p className="whitespace-pre-wrap text-stone-700">{content.texto}</p>;
+    return <p className="whitespace-pre-wrap text-foreground">{content.texto}</p>;
   }
 
-  return <p className="text-[var(--color-muted)]">Veja o entregável completo.</p>;
+  return <p className="text-muted-foreground">Veja o entregável completo.</p>;
 }

@@ -1,9 +1,20 @@
 'use client';
 
 import * as React from 'react';
+import { CircleAlert } from 'lucide-react';
 import type { PersonaConfig } from '@/src/agents/registry';
-import type { PersonaStatus } from '@/src/domain/persona';
-import { Card } from '@/components/ui/card';
+import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
+import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { LoaderIcon, type LoaderIconHandle } from '@/components/ui/loader';
+import {
+  CircleCheckIcon,
+  type CircleCheckIconHandle,
+} from '@/components/ui/circle-check';
+import { ZapIcon } from '@/components/ui/zap';
+import { SearchIcon } from '@/components/ui/search';
+import { UsersIcon } from '@/components/ui/users';
 
 const STATUS_LABEL: Record<PersonaStatus, string> = {
   idle: 'Parado',
@@ -12,12 +23,64 @@ const STATUS_LABEL: Record<PersonaStatus, string> = {
   error: 'Erro',
 };
 
-const STATUS_STYLE: Record<PersonaStatus, string> = {
-  idle: 'bg-stone-100 text-stone-600',
-  working: 'bg-amber-100 text-amber-700',
-  done: 'bg-emerald-100 text-emerald-700',
-  error: 'bg-rose-100 text-rose-700',
+/** Classes extras do Badge por status (cores sem variant dedicada). */
+const STATUS_BADGE_CLASS: Record<PersonaStatus, string> = {
+  idle: 'border-border bg-transparent text-muted-foreground',
+  working: 'bg-primary/10 text-primary',
+  done: 'bg-emerald-500/15 text-emerald-700',
+  error: '',
 };
+
+/** Handle comum dos ícones animados (lucide-animated). */
+interface AnimatedIconHandle {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+}
+
+type AnimatedIcon = React.ForwardRefExoticComponent<
+  React.HTMLAttributes<HTMLDivElement> & { size?: number } & React.RefAttributes<AnimatedIconHandle>
+>;
+
+/** Ícone animado de cada persona (anima no hover do card). */
+const PERSONA_ICON: Record<PersonaId, AnimatedIcon> = {
+  'conteudo-aquisicao': ZapIcon,
+  'pesquisa-mercado': SearchIcon,
+  'vendas-prospeccao': UsersIcon,
+};
+
+function StatusBadge({ status }: { status: PersonaStatus }) {
+  const loaderRef = React.useRef<LoaderIconHandle>(null);
+  const checkRef = React.useRef<CircleCheckIconHandle>(null);
+
+  // Loader gira continuamente enquanto status=working; o check "desenha"
+  // o traço na transição para done.
+  React.useEffect(() => {
+    if (status === 'working') loaderRef.current?.startAnimation();
+    else if (status === 'done') checkRef.current?.startAnimation();
+  }, [status]);
+
+  return (
+    <Badge
+      key={status}
+      variant={status === 'error' ? 'destructive' : 'secondary'}
+      className={cn(
+        'shrink-0 animate-in fade-in zoom-in-90 duration-300',
+        STATUS_BADGE_CLASS[status],
+      )}
+    >
+      {status === 'working' ? (
+        <LoaderIcon ref={loaderRef} size={12} className="flex" aria-hidden />
+      ) : null}
+      {status === 'done' ? (
+        <CircleCheckIcon ref={checkRef} size={12} className="flex" aria-hidden />
+      ) : null}
+      {status === 'error' ? (
+        <CircleAlert className="size-3" aria-hidden />
+      ) : null}
+      {STATUS_LABEL[status]}
+    </Badge>
+  );
+}
 
 export interface PersonaCardProps {
   persona: PersonaConfig;
@@ -33,40 +96,48 @@ export function PersonaCard({
   atividade,
   children,
 }: PersonaCardProps) {
+  const iconRef = React.useRef<AnimatedIconHandle>(null);
+  const Icon = PERSONA_ICON[persona.id];
+
   return (
-    <Card className="p-4">
-      <div className="flex items-start gap-3">
+    <Card
+      size="sm"
+      className={cn(
+        'transition-all duration-300',
+        status === 'working' && 'ring-primary/30',
+        status === 'error' && 'ring-destructive/30',
+      )}
+      onMouseEnter={() => iconRef.current?.startAnimation()}
+      onMouseLeave={() => iconRef.current?.stopAnimation()}
+    >
+      <CardContent className="flex items-start gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-soft)] text-xl"
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
           aria-hidden
         >
-          {persona.emoji}
+          <Icon ref={iconRef} size={20} className="flex" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate text-sm font-semibold text-[var(--color-ink)]">
+            <h3 className="truncate text-sm font-semibold text-foreground">
               {persona.nome}
             </h3>
-            <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[status]}`}
-            >
-              {status === 'working' && (
-                <span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current align-middle" />
-              )}
-              {STATUS_LABEL[status]}
-            </span>
+            <StatusBadge status={status} />
           </div>
-          <p className="mt-1 text-xs leading-snug text-[var(--color-muted)]">
+          <p className="mt-1 text-xs leading-snug text-muted-foreground">
             {persona.descricao}
           </p>
           {atividade ? (
-            <p className="mt-2 rounded-md bg-stone-50 px-2 py-1.5 text-xs text-stone-600">
+            <p
+              key={atividade}
+              className="mt-2 rounded-md bg-muted/60 px-2 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-300"
+            >
               {atividade}
             </p>
           ) : null}
           {children ? <div className="mt-3">{children}</div> : null}
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }

@@ -29,7 +29,7 @@ export function Console() {
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-      <section className="flex min-h-0 flex-col rounded-xl border border-black/10 bg-[var(--color-canvas)] p-4 lg:col-span-2">
+      <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm lg:col-span-2">
         <Chat
           messages={messages}
           sendMessage={sendMessage}
