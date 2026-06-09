@@ -24,3 +24,7 @@ coverage/
 # tool-managed skill caches (reproduzíveis a partir de skills-lock.json)
 .claude/
 .agents/
+
+# clerk configuration (can include secrets)
+/.clerk/
+.env*
