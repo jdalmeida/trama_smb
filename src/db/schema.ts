@@ -9,6 +9,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { UIMessage } from 'ai';
 import type { BusinessProfile } from '@/src/domain/business-profile';
 import type { DeliverableContent } from '@/src/domain/deliverable';
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
@@ -61,6 +62,21 @@ export const deliverables = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('deliverables_business_idx').on(t.businessId)],
+);
+
+/** Histórico do chat com o CEO — uma linha por UIMessage (jsonb completa). */
+export const chatMessages = pgTable(
+  'chat_messages',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 16 }).notNull(),
+    message: jsonb('message').$type<UIMessage>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('chat_messages_business_idx').on(t.businessId)],
 );
 
 /** Mapeia um run de Workflow (durável) à persona/entregável, p/ reconectar streams. */

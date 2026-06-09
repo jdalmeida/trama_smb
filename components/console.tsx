@@ -8,9 +8,12 @@ import { Chat } from '@/components/chat/chat';
 import { TeamPanel, type ActiveRun } from '@/components/team/team-panel';
 
 export function Console() {
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
+
+  // Hidrata o chat com o histórico persistido (GET /api/chat/history).
+  const carregandoHistorico = useHistoricoChat(setMessages);
 
   // Runs derivados do chat (delegarTarefa) — feedback instantâneo.
   const chatRuns = React.useMemo(() => extrairRuns(messages), [messages]);
@@ -27,13 +30,63 @@ export function Console() {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
       <section className="flex min-h-0 flex-col rounded-xl border border-black/10 bg-[var(--color-canvas)] p-4 lg:col-span-2">
-        <Chat messages={messages} sendMessage={sendMessage} status={status} />
+        <Chat
+          messages={messages}
+          sendMessage={sendMessage}
+          status={status}
+          carregandoHistorico={carregandoHistorico}
+        />
       </section>
       <section className="min-h-0 lg:col-span-1">
         <TeamPanel runs={runs} />
       </section>
     </div>
   );
+}
+
+/**
+ * Carrega o histórico do chat na montagem e mescla com as mensagens já
+ * presentes no useChat (dedup por id — o que está na tela tem precedência,
+ * então nada duplica nem some se o usuário já enviou algo). As parts das
+ * mensagens restauradas vêm intactas do banco, então extrairRuns continua
+ * reconstruindo os runs do painel Time normalmente.
+ */
+function useHistoricoChat(
+  setMessages: (
+    updater: UIMessage[] | ((atuais: UIMessage[]) => UIMessage[]),
+  ) => void,
+): boolean {
+  const [carregando, setCarregando] = React.useState(true);
+
+  React.useEffect(() => {
+    let vivo = true;
+    const carregar = async () => {
+      try {
+        const res = await fetch('/api/chat/history');
+        if (!res.ok) return;
+        const data = (await res.json()) as { mensagens?: UIMessage[] };
+        const historico = data.mensagens ?? [];
+        if (!vivo || historico.length === 0) return;
+        setMessages((atuais) => {
+          const idsAtuais = new Set(atuais.map((m) => m.id));
+          return [
+            ...historico.filter((m) => !idsAtuais.has(m.id)),
+            ...atuais,
+          ];
+        });
+      } catch {
+        // silencioso — o chat segue funcionando sem o histórico
+      } finally {
+        if (vivo) setCarregando(false);
+      }
+    };
+    void carregar();
+    return () => {
+      vivo = false;
+    };
+  }, [setMessages]);
+
+  return carregando;
 }
 
 /**

@@ -13,9 +13,16 @@ export interface ChatProps {
   messages: UIMessage[];
   sendMessage: (message: { text: string }) => Promise<void> | void;
   status: ChatStatus;
+  /** True enquanto o histórico persistido ainda está sendo carregado. */
+  carregandoHistorico?: boolean;
 }
 
-export function Chat({ messages, sendMessage, status }: ChatProps) {
+export function Chat({
+  messages,
+  sendMessage,
+  status,
+  carregandoHistorico = false,
+}: ChatProps) {
   const [input, setInput] = React.useState('');
   const bottomRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -48,7 +55,13 @@ export function Chat({ messages, sendMessage, status }: ChatProps) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-1">
         {messages.length === 0 ? (
-          <EstadoVazio />
+          carregandoHistorico ? (
+            <p className="px-2 py-4 text-xs text-[var(--color-muted)]">
+              Carregando conversa…
+            </p>
+          ) : (
+            <EstadoVazio />
+          )
         ) : (
           messages.map((m) => <MessageParts key={m.id} message={m} />)
         )}
