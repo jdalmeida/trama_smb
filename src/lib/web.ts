@@ -24,7 +24,9 @@ export function validarUrlPublica(entrada: string): UrlValidada {
     return { ok: false, erro: 'Apenas URLs http(s) são permitidas' };
   }
 
-  const host = url.hostname.toLowerCase();
+  // URL.hostname entrega IPv6 com colchetes (ex.: "[::1]") — remove antes
+  // de comparar, senão nenhuma checagem IPv6 funciona.
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (
     host === 'localhost' ||
     host.endsWith('.localhost') ||
@@ -40,7 +42,7 @@ export function validarUrlPublica(entrada: string): UrlValidada {
 
 /** Detecta IPs de loopback, link-local e faixas privadas (IPv4 e IPv6 comuns). */
 function ehIpPrivado(host: string): boolean {
-  // IPv6 (URL.hostname entrega sem colchetes)
+  // IPv6 (host já chega sem colchetes)
   if (host.includes(':')) {
     return (
       host === '::1' ||

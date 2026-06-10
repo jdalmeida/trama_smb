@@ -6,6 +6,8 @@ import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
 import type { PersonaId } from '@/src/domain/persona';
 import { Chat } from '@/components/chat/chat';
 import { TeamPanel, type ActiveRun } from '@/components/team/team-panel';
+import { MemoryPanel } from '@/components/memory/memory-panel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function Console() {
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -38,7 +40,18 @@ export function Console() {
         />
       </section>
       <section className="min-h-0 lg:col-span-1">
-        <TeamPanel runs={runs} />
+        <Tabs defaultValue="time">
+          <TabsList className="w-full">
+            <TabsTrigger value="time">Time</TabsTrigger>
+            <TabsTrigger value="memoria">Memória</TabsTrigger>
+          </TabsList>
+          <TabsContent value="time">
+            <TeamPanel runs={runs} />
+          </TabsContent>
+          <TabsContent value="memoria">
+            <MemoryPanel />
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   );
