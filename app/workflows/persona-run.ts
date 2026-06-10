@@ -58,12 +58,17 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
     // O playbook é lido do filesystem dentro de um step (Node), depois passado
     // ao agente construído aqui no workflow.
     const instructions = await carregarInstrucoes(input.personaId);
+    const toolsCtx = {
+      businessId: input.businessId,
+      personaId: input.personaId,
+      runId: workflowRunId,
+    };
     const agent =
       input.personaId === 'conteudo-aquisicao'
-        ? getConteudoAgent(instructions)
+        ? getConteudoAgent(instructions, toolsCtx)
         : input.personaId === 'vendas-prospeccao'
-          ? getVendasAgent(instructions)
-          : getPesquisaAgent(instructions);
+          ? getVendasAgent(instructions, toolsCtx)
+          : getPesquisaAgent(instructions, toolsCtx);
 
     // Stream default do run: narração do worker (UIMessageChunk).
     const writable = getWritable<UIMessageChunk>();
@@ -75,7 +80,7 @@ export async function personaRunWorkflow(input: PersonaRunInput): Promise<{
       '## Sua tarefa',
       input.tarefa,
       '',
-      'Trabalhe a tarefa com base no perfil. Use a ferramenta de busca quando precisar de informações reais (somente fontes públicas). Ao final, entregue um rascunho completo e bem organizado em português brasileiro.',
+      'Trabalhe a tarefa com base no perfil. Antes de começar, consulte a memória da empresa (consultarMemoria) e os entregáveis anteriores (listarEntregaveis) para aproveitar o que o time já sabe e não repetir trabalho. Use buscaWeb/lerPagina quando precisar de informações reais (somente fontes públicas; cite as URLs) e consultarCnpj para qualificar empresas. Ao final: (1) salve na memória (salvarArtefato) um resumo dos achados úteis para o time que não estarão óbvios no entregável; (2) entregue um rascunho completo e bem organizado em português brasileiro.',
     ].join('\n');
 
     const result = await agent.stream({

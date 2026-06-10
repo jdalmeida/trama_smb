@@ -79,6 +79,45 @@ export const chatMessages = pgTable(
   (t) => [index('chat_messages_business_idx').on(t.businessId)],
 );
 
+/** Categorias de artefato na memória da empresa. */
+export type ArtifactCategoria =
+  | 'nota'
+  | 'pesquisa'
+  | 'decisao'
+  | 'referencia';
+
+/** Quem criou o artefato: o CEO, uma persona ou o próprio dono. */
+export type ArtifactAutor = 'ceo' | 'usuario' | PersonaId;
+
+/**
+ * Repositório de artefatos — a "memória da empresa". Guarda contexto durável
+ * (notas, achados de pesquisa, decisões, referências) que o CEO e as personas
+ * consultam antes de trabalhar e alimentam ao concluir, para que cada run
+ * aproveite o que já foi aprendido sobre o negócio.
+ */
+export const artifacts = pgTable(
+  'artifacts',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    autor: varchar('autor', { length: 64 }).$type<ArtifactAutor>().notNull(),
+    titulo: text('titulo').notNull(),
+    categoria: varchar('categoria', { length: 32 })
+      .$type<ArtifactCategoria>()
+      .notNull()
+      .default('nota'),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    conteudo: text('conteudo').notNull(),
+    /** runId do Workflow que originou o artefato, quando veio de uma persona. */
+    runId: text('run_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('artifacts_business_idx').on(t.businessId)],
+);
+
 /** Mapeia um run de Workflow (durável) à persona/entregável, p/ reconectar streams. */
 export const runs = pgTable(
   'runs',

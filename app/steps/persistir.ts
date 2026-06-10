@@ -24,8 +24,10 @@ import type { BusinessProfile } from '@/src/domain/business-profile';
  * Cada função aqui é uma unidade Node retryável e com acesso a I/O:
  * - persistência no banco (deliverables / runs);
  * - emissão de eventos de status pelo stream do run (namespace "status");
- * - busca na web (Tavily) usada como tool dos agentes;
  * - extração estruturada do entregável final (generateText + Output.object).
+ *
+ * As tools de internet (buscaWeb, lerPagina, consultarCnpj) estão em
+ * app/steps/web.ts; as de memória da empresa em app/steps/memoria.ts.
  */
 
 /** Persiste o conteúdo final do entregável e marca como concluído. */
@@ -78,58 +80,6 @@ export async function carregarInstrucoes(personaId: PersonaId): Promise<string> 
   const instrucoes = buildInstructions(personaId);
   console.log('[carregarInstrucoes] fim', { personaId, tamanho: instrucoes.length });
   return instrucoes;
-}
-
-/** Resultado padronizado de um item de busca na web. */
-type ResultadoBusca = { title: string; url: string; snippet: string };
-
-/**
- * Busca na web via Tavily (somente fontes públicas).
- * Se TAVILY_API_KEY não estiver configurada, ou em caso de erro, retorna [].
- */
-export async function buscaWeb(input: {
-  query: string;
-}): Promise<ResultadoBusca[]> {
-  'use step';
-  console.log('[buscaWeb] início', { query: input.query });
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (!apiKey) {
-    console.log('[buscaWeb] TAVILY_API_KEY ausente — retornando []');
-    return [];
-  }
-
-  try {
-    const res = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query: input.query,
-        search_depth: 'basic',
-        max_results: 5,
-      }),
-    });
-
-    if (!res.ok) {
-      console.log('[buscaWeb] resposta não-OK', { status: res.status });
-      return [];
-    }
-
-    const data = (await res.json()) as {
-      results?: { title?: string; url?: string; content?: string }[];
-    };
-
-    const resultados: ResultadoBusca[] = (data.results ?? []).map((r) => ({
-      title: r.title ?? '',
-      url: r.url ?? '',
-      snippet: r.content ?? '',
-    }));
-    console.log('[buscaWeb] fim', { quantidade: resultados.length });
-    return resultados;
-  } catch (err) {
-    console.error('[buscaWeb] erro', err);
-    return [];
-  }
 }
 
 /**

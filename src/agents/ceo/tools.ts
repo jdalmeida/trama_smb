@@ -4,6 +4,13 @@ import { start } from 'workflow/api';
 import { getDb } from '@/src/db';
 import { deliverables, runs } from '@/src/db/schema';
 import { getProfile, upsertProfile } from '@/src/lib/business';
+import {
+  buscarArtefatos,
+  criarArtefato,
+  lerArtefato,
+  lerEntregavel,
+  listarEntregaveis,
+} from '@/src/lib/artifacts';
 import { iniciarPlano } from '@/src/lib/orchestrate';
 import { BusinessProfileSchema } from '@/src/domain/business-profile';
 import { PERSONA_IDS, type PersonaRunInput } from '@/src/domain/persona';
@@ -18,7 +25,8 @@ export type CeoContext = { ownerUserId: string; businessId: string };
  * negócio atual (ctx.businessId). O CEO usa estas tools para:
  *  - extrair e salvar o Perfil do Negócio,
  *  - propor um plano de trabalho (sem disparar nada),
- *  - delegar tarefas às personas (worker), iniciando runs duráveis.
+ *  - delegar tarefas às personas (worker), iniciando runs duráveis,
+ *  - consultar/alimentar a memória da empresa e os entregáveis anteriores.
  */
 export function ceoTools(ctx: CeoContext): ToolSet {
   return {
@@ -174,6 +182,106 @@ export function ceoTools(ctx: CeoContext): ToolSet {
           ok: true as const,
           orchestratorRunId: plano.orchestratorRunId,
           itens: plano.itens,
+        };
+      },
+    }),
+
+    consultarMemoria: tool({
+      description:
+        'Busca na memória da empresa: artefatos salvos pelo time (notas, ' +
+        'achados de pesquisa, decisões, referências). Consulte antes de propor ' +
+        'um plano ou delegar, para aproveitar o que já foi aprendido e dar ' +
+        'tarefas mais bem contextualizadas. Sem query, lista os mais recentes.',
+      inputSchema: z.object({
+        query: z
+          .string()
+          .optional()
+          .describe('Texto a procurar em títulos e conteúdos'),
+        categoria: z
+          .enum(['nota', 'pesquisa', 'decisao', 'referencia'])
+          .optional(),
+      }),
+      execute: async ({ query, categoria }) => {
+        return buscarArtefatos(ctx.businessId, { query, categoria });
+      },
+    }),
+
+    lerArtefato: tool({
+      description:
+        'Lê o conteúdo completo de um artefato da memória da empresa (use o ' +
+        'id retornado por consultarMemoria).',
+      inputSchema: z.object({
+        artifactId: z.string().describe('O id do artefato'),
+      }),
+      execute: async ({ artifactId }) => {
+        const row = await lerArtefato(ctx.businessId, artifactId);
+        if (!row) return null;
+        return {
+          id: row.id,
+          titulo: row.titulo,
+          categoria: row.categoria,
+          autor: row.autor,
+          tags: row.tags,
+          conteudo: row.conteudo,
+          criadoEm: row.createdAt.toISOString(),
+        };
+      },
+    }),
+
+    salvarNaMemoria: tool({
+      description:
+        'Salva um fato importante na memória da empresa, para você e as ' +
+        'personas usarem depois: decisões do dono ("não quer vender online"), ' +
+        'contexto que não cabe no perfil, preferências, restrições. Use quando ' +
+        'a conversa revelar algo durável que vale lembrar. Título curto, ' +
+        'conteúdo em markdown.',
+      inputSchema: z.object({
+        titulo: z.string().describe('Título curto e descritivo'),
+        categoria: z.enum(['nota', 'pesquisa', 'decisao', 'referencia']),
+        conteudo: z.string().describe('O conteúdo em markdown'),
+        tags: z.array(z.string()).optional().describe('Etiquetas para busca'),
+      }),
+      execute: async ({ titulo, categoria, conteudo, tags }) => {
+        const row = await criarArtefato({
+          businessId: ctx.businessId,
+          autor: 'ceo',
+          titulo,
+          categoria,
+          conteudo,
+          tags,
+        });
+        return { ok: true as const, id: row.id, titulo: row.titulo };
+      },
+    }),
+
+    listarEntregaveis: tool({
+      description:
+        'Lista os entregáveis que o time já produziu para este negócio ' +
+        '(título, persona, status e data). Use para responder "o que já foi ' +
+        'feito" e para evitar delegar trabalho repetido.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        return listarEntregaveis(ctx.businessId);
+      },
+    }),
+
+    lerEntregavel: tool({
+      description:
+        'Lê um entregável completo (use o id de listarEntregaveis). Útil para ' +
+        'comentar resultados com o dono e encadear próximos passos.',
+      inputSchema: z.object({
+        deliverableId: z.string().describe('O id do entregável'),
+      }),
+      execute: async ({ deliverableId }) => {
+        const row = await lerEntregavel(ctx.businessId, deliverableId);
+        if (!row) return null;
+        return {
+          id: row.id,
+          titulo: row.titulo,
+          personaId: row.personaId,
+          status: row.status,
+          content: row.content,
+          criadoEm: row.createdAt.toISOString(),
         };
       },
     }),
