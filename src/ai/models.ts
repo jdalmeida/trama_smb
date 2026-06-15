@@ -4,10 +4,10 @@
 // dashboard do Gateway. Dá para sobrescrever por env (MODEL_REASONING etc.).
 export const MODELS = {
   // Raciocínio / orquestração (CEO) e personas.
-  reasoning: 'anthropic/claude-sonnet-4.5',
-  worker: 'anthropic/claude-sonnet-4.5',
+  reasoning: "google/gemini-3.5-flash",
+  worker: "moonshotai/kimi-k2.6",
   // Tarefas simples / extração estruturada barata.
-  cheap: 'google/gemini-3.1-flash-lite',
+  cheap: "openai/gpt-4o-mini",
 } as const;
 
 export type ModelTier = keyof typeof MODELS;
