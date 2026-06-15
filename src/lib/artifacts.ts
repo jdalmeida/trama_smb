@@ -95,6 +95,41 @@ export async function buscarArtefatos(
   }));
 }
 
+/** Campos editáveis de um artefato. */
+export interface AtualizarArtefatoInput {
+  titulo?: string;
+  categoria?: ArtifactCategoria;
+  conteudo?: string;
+  tags?: string[];
+}
+
+/** Atualiza um artefato (escopado ao negócio). Retorna a linha ou null. */
+export async function atualizarArtefato(
+  businessId: string,
+  artifactId: string,
+  patch: AtualizarArtefatoInput,
+) {
+  const campos: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.titulo !== undefined) campos.titulo = patch.titulo;
+  if (patch.categoria !== undefined) campos.categoria = patch.categoria;
+  if (patch.conteudo !== undefined) campos.conteudo = patch.conteudo;
+  if (patch.tags !== undefined) campos.tags = patch.tags;
+
+  const [row] = await getDb()
+    .update(artifacts)
+    .set(campos)
+    .where(and(eq(artifacts.id, artifactId), eq(artifacts.businessId, businessId)))
+    .returning();
+  return row ?? null;
+}
+
+/** Apaga um artefato (escopado ao negócio). */
+export async function apagarArtefato(businessId: string, artifactId: string) {
+  await getDb()
+    .delete(artifacts)
+    .where(and(eq(artifacts.id, artifactId), eq(artifacts.businessId, businessId)));
+}
+
 /** Lê um artefato completo (escopado ao negócio) ou null. */
 export async function lerArtefato(businessId: string, artifactId: string) {
   const rows = await getDb()

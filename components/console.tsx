@@ -3,35 +3,161 @@
 import * as React from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
+import { MessagesSquare, Sparkles, Users } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import type { PersonaId } from '@/src/domain/persona';
 import { Chat } from '@/components/chat/chat';
 import { TeamPanel, type ActiveRun } from '@/components/team/team-panel';
-import { MemoryPanel } from '@/components/memory/memory-panel';
+import { ArtifactsPanel } from '@/components/artifacts/artifacts-panel';
+import { DeliverablesPanel } from '@/components/deliverables/deliverables-panel';
+import {
+  ConversationList,
+  type Conversa,
+} from '@/components/conversations/conversation-list';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Toaster } from '@/components/ui/toast';
 
 export function Console() {
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
-  });
+  // Conversa ativa: um ref (lido pelo transport) + um state (dispara render).
+  const conversationIdRef = React.useRef<string | null>(null);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
 
-  // Hidrata o chat com o histórico persistido (GET /api/chat/history).
-  const carregandoHistorico = useHistoricoChat(setMessages);
+  const transport = React.useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: '/api/chat',
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { messages, conversationId: conversationIdRef.current },
+        }),
+      }),
+    [],
+  );
 
-  // Runs derivados do chat (delegarTarefa) — feedback instantâneo.
+  const { messages, sendMessage, status, setMessages } = useChat({ transport });
+
+  const {
+    conversas,
+    carregando: carregandoConversas,
+    refresh: refreshConversas,
+    setConversas,
+  } = useConversas();
+
+  const [carregandoHistorico, setCarregandoHistorico] = React.useState(true);
+
+  // Define a conversa ativa: atualiza ref + state e carrega o histórico dela.
+  const selecionar = React.useCallback(
+    async (id: string) => {
+      conversationIdRef.current = id;
+      setActiveId(id);
+      setCarregandoHistorico(true);
+      try {
+        const res = await fetch(`/api/conversations/${id}`);
+        if (res.ok) {
+          const data = (await res.json()) as { mensagens?: UIMessage[] };
+          setMessages(data.mensagens ?? []);
+        } else {
+          setMessages([]);
+        }
+      } catch {
+        setMessages([]);
+      } finally {
+        setCarregandoHistorico(false);
+      }
+    },
+    [setMessages],
+  );
+
+  const novaConversa = React.useCallback(async () => {
+    // Se já estamos numa conversa vazia, reutiliza em vez de criar outra.
+    const atual = conversas.find((c) => c.id === activeId);
+    if (atual && atual.mensagens === 0 && messages.length === 0) return;
+    try {
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { conversa: Conversa };
+      setConversas((prev) => [data.conversa, ...prev]);
+      conversationIdRef.current = data.conversa.id;
+      setActiveId(data.conversa.id);
+      setMessages([]);
+      setCarregandoHistorico(false);
+    } catch {
+      // silencioso
+    }
+  }, [activeId, conversas, messages.length, setConversas, setMessages]);
+
+  // Bootstrap: escolhe a conversa mais recente ou cria a primeira.
+  const bootstrapped = React.useRef(false);
+  React.useEffect(() => {
+    if (bootstrapped.current || carregandoConversas) return;
+    bootstrapped.current = true;
+    if (conversas.length > 0) {
+      void selecionar(conversas[0].id);
+    } else {
+      void novaConversa();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregandoConversas]);
+
+  // Quando uma resposta termina, atualiza a lista (título auto + ordem).
+  const statusAnterior = React.useRef(status);
+  React.useEffect(() => {
+    if (statusAnterior.current !== 'ready' && status === 'ready') {
+      void refreshConversas();
+    }
+    statusAnterior.current = status;
+  }, [status, refreshConversas]);
+
+  const renomear = React.useCallback(
+    async (id: string, titulo: string) => {
+      setConversas((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, titulo } : c)),
+      );
+      try {
+        await fetch(`/api/conversations/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo }),
+        });
+      } catch {
+        void refreshConversas();
+      }
+    },
+    [refreshConversas, setConversas],
+  );
+
+  const apagar = React.useCallback(
+    async (id: string) => {
+      setConversas((prev) => prev.filter((c) => c.id !== id));
+      try {
+        await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+      } catch {
+        void refreshConversas();
+      }
+      if (id === activeId) {
+        const resto = conversas.filter((c) => c.id !== id);
+        if (resto.length > 0) void selecionar(resto[0].id);
+        else void novaConversa();
+      }
+    },
+    [activeId, conversas, novaConversa, refreshConversas, selecionar, setConversas],
+  );
+
+  // Runs do painel "Time": derivados do chat + vindos do banco.
   const chatRuns = React.useMemo(() => extrairRuns(messages), [messages]);
-
-  // Runs vindos do banco (GET /api/runs) — descobre os runs filhos do
-  // orquestrador (delegarPlano) e reconecta após refresh. Poll leve.
   const apiRuns = useApiRuns();
-
   const runs = React.useMemo(
     () => mesclarRuns(chatRuns, apiRuns),
     [chatRuns, apiRuns],
   );
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-      <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm lg:col-span-2">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_22rem]">
+      {/* Chat ocupa o espaço principal */}
+      <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm">
         <Chat
           messages={messages}
           sendMessage={sendMessage}
@@ -39,73 +165,90 @@ export function Console() {
           carregandoHistorico={carregandoHistorico}
         />
       </section>
-      <section className="min-h-0 lg:col-span-1">
-        <Tabs defaultValue="time">
+
+      {/* Sidebar: conversas + painéis */}
+      <aside className="flex min-h-0 flex-col">
+        <Tabs
+          defaultValue="conversas"
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <TabsList className="w-full">
-            <TabsTrigger value="time">Time</TabsTrigger>
-            <TabsTrigger value="memoria">Memória</TabsTrigger>
+            <TabsTrigger value="conversas" className="gap-1">
+              <MessagesSquare className="size-3.5" aria-hidden />
+              <span className="hidden sm:inline">Conversas</span>
+            </TabsTrigger>
+            <TabsTrigger value="time" className="gap-1">
+              <Users className="size-3.5" aria-hidden />
+              <span className="hidden sm:inline">Time</span>
+            </TabsTrigger>
+            <TabsTrigger value="entregaveis" className="gap-1">
+              <FileText className="size-3.5" aria-hidden />
+              <span className="hidden sm:inline">Entregáveis</span>
+            </TabsTrigger>
+            <TabsTrigger value="artefatos" className="gap-1">
+              <Sparkles className="size-3.5" aria-hidden />
+              <span className="hidden sm:inline">Artefatos</span>
+            </TabsTrigger>
           </TabsList>
-          <TabsContent value="time">
-            <TeamPanel runs={runs} />
-          </TabsContent>
-          <TabsContent value="memoria">
-            <MemoryPanel />
-          </TabsContent>
+
+          <div className="mt-3 min-h-0 flex-1 rounded-xl border border-border bg-background p-3 shadow-sm">
+            <TabsContent value="conversas" className="mt-0 h-full">
+              <ConversationList
+                conversas={conversas}
+                activeId={activeId}
+                carregando={carregandoConversas}
+                onSelect={(id) => void selecionar(id)}
+                onNew={() => void novaConversa()}
+                onRename={(id, t) => void renomear(id, t)}
+                onDelete={(id) => void apagar(id)}
+              />
+            </TabsContent>
+            <TabsContent value="time" className="mt-0 h-full overflow-y-auto">
+              <TeamPanel runs={runs} />
+            </TabsContent>
+            <TabsContent value="entregaveis" className="mt-0 h-full">
+              <DeliverablesPanel />
+            </TabsContent>
+            <TabsContent value="artefatos" className="mt-0 h-full">
+              <ArtifactsPanel />
+            </TabsContent>
+          </div>
         </Tabs>
-      </section>
+      </aside>
+
+      <Toaster />
     </div>
   );
 }
 
-/**
- * Carrega o histórico do chat na montagem e mescla com as mensagens já
- * presentes no useChat (dedup por id — o que está na tela tem precedência,
- * então nada duplica nem some se o usuário já enviou algo). As parts das
- * mensagens restauradas vêm intactas do banco, então extrairRuns continua
- * reconstruindo os runs do painel Time normalmente.
- */
-function useHistoricoChat(
-  setMessages: (
-    updater: UIMessage[] | ((atuais: UIMessage[]) => UIMessage[]),
-  ) => void,
-): boolean {
+/** Busca e mantém a lista de conversas do negócio. */
+function useConversas() {
+  const [conversas, setConversas] = React.useState<Conversa[]>([]);
   const [carregando, setCarregando] = React.useState(true);
 
-  React.useEffect(() => {
-    let vivo = true;
-    const carregar = async () => {
-      try {
-        const res = await fetch('/api/chat/history');
-        if (!res.ok) return;
-        const data = (await res.json()) as { mensagens?: UIMessage[] };
-        const historico = data.mensagens ?? [];
-        if (!vivo || historico.length === 0) return;
-        setMessages((atuais) => {
-          const idsAtuais = new Set(atuais.map((m) => m.id));
-          return [
-            ...historico.filter((m) => !idsAtuais.has(m.id)),
-            ...atuais,
-          ];
-        });
-      } catch {
-        // silencioso — o chat segue funcionando sem o histórico
-      } finally {
-        if (vivo) setCarregando(false);
-      }
-    };
-    void carregar();
-    return () => {
-      vivo = false;
-    };
-  }, [setMessages]);
+  const refresh = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/conversations');
+      if (!res.ok) return;
+      const data = (await res.json()) as { conversas?: Conversa[] };
+      setConversas(data.conversas ?? []);
+    } catch {
+      // silencioso
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
 
-  return carregando;
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { conversas, carregando, refresh, setConversas };
 }
 
 /**
- * Busca os runs do negócio em GET /api/runs (na montagem + poll leve a cada 5s).
- * É como os runs filhos do orquestrador (delegarPlano) aparecem no painel, e
- * como reconectamos os streams após um refresh da página.
+ * Busca os runs do negócio em GET /api/runs (na montagem + poll leve a cada 5s)
+ * para o painel "Time" reconectar streams após refresh.
  */
 function useApiRuns(): ActiveRun[] {
   const [runs, setRuns] = React.useState<ActiveRun[]>([]);
@@ -133,7 +276,7 @@ function useApiRuns(): ActiveRun[] {
           }));
         setRuns(mapeados);
       } catch {
-        // silencioso — o painel continua com os runs derivados do chat
+        // silencioso
       }
     };
     void carregar();
@@ -160,9 +303,8 @@ function mesclarRuns(a: ActiveRun[], b: ActiveRun[]): ActiveRun[] {
 }
 
 /**
- * Deriva a lista de runs ativos a partir dos outputs da tool delegarTarefa
- * (state "output-available"). O output traz { deliverableId, runId, personaId, persona }.
- * Deduplica por runId, mantendo a primeira ocorrência.
+ * Deriva runs ativos a partir dos outputs da tool delegarTarefa
+ * (state "output-available"): { deliverableId, runId, personaId }.
  */
 function extrairRuns(messages: UIMessage[]): ActiveRun[] {
   const vistos = new Set<string>();

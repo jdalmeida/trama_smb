@@ -13,7 +13,7 @@ export default async function ConsolePage() {
   return (
     <main className="flex h-screen flex-col bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 w-full max-w-[100rem] items-center justify-between px-4 sm:px-6">
           <div className="flex h-6 items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xl" aria-hidden>
@@ -32,7 +32,7 @@ export default async function ConsolePage() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 py-4">
+      <div className="mx-auto flex w-full max-w-[100rem] min-h-0 flex-1 flex-col px-4 py-4 sm:px-6">
         <Console />
       </div>
     </main>
