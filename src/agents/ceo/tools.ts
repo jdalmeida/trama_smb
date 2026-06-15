@@ -107,6 +107,7 @@ export function ceoTools(ctx: CeoContext): ToolSet {
             businessId: ctx.businessId,
             personaId,
             titulo: `${persona.nome}: ${tarefa}`,
+            tarefa,
             status: 'working',
           })
           .returning();

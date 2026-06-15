@@ -53,10 +53,18 @@ export const deliverables = pgTable(
       .references(() => businesses.id, { onDelete: 'cascade' }),
     personaId: varchar('persona_id', { length: 64 }).$type<PersonaId>().notNull(),
     titulo: text('titulo').notNull(),
+    /** Tarefa em linguagem natural que originou o entregável — usada p/ retomar. */
+    tarefa: text('tarefa'),
     status: varchar('status', { length: 32 })
       .$type<PersonaStatus>()
       .notNull()
       .default('working'),
+    /**
+     * Checkpoint: rascunho do agente já gerado. Se um run falha após produzir o
+     * rascunho mas antes de estruturar o entregável, a retomada reaproveita
+     * este texto em vez de regenerar com o LLM.
+     */
+    rascunho: text('rascunho'),
     content: jsonb('content').$type<DeliverableContent>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

@@ -1,7 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { CheckCircle2, FileText, Loader2, TriangleAlert } from 'lucide-react';
+import {
+  CheckCircle2,
+  FileText,
+  Loader2,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-react';
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import type { DeliverableContent } from '@/src/domain/deliverable';
 import { PERSONAS } from '@/src/agents/registry';
@@ -56,7 +62,7 @@ const STATUS: Record<
  * pronto — é como o resultado aparece "na cara" do usuário (problema #4).
  */
 export function DeliverablesPanel() {
-  const { entregaveis, carregando } = useEntregaveis();
+  const { entregaveis, carregando, refresh } = useEntregaveis();
   const [aberto, setAberto] = React.useState<string | null>(null);
 
   const prontos = entregaveis.filter((e) => e.status === 'done').length;
@@ -92,6 +98,7 @@ export function DeliverablesPanel() {
                 onToggle={() =>
                   setAberto((cur) => (cur === e.id ? null : e.id))
                 }
+                onRetomado={() => void refresh()}
               />
             ))}
           </ul>
@@ -105,17 +112,51 @@ function EntregavelItem({
   entregavel,
   aberto,
   onToggle,
+  onRetomado,
 }: {
   entregavel: EntregavelResumo;
   aberto: boolean;
   onToggle: () => void;
+  onRetomado: () => void;
 }) {
   const [completo, setCompleto] = React.useState<EntregavelCompleto | null>(
     null,
   );
+  const [retomando, setRetomando] = React.useState(false);
   const persona = PERSONAS[entregavel.personaId];
   const cfg = STATUS[entregavel.status] ?? STATUS.idle;
   const podeAbrir = entregavel.status === 'done';
+
+  async function retomar() {
+    setRetomando(true);
+    try {
+      const res = await fetch(`/api/deliverables/${entregavel.id}/resume`, {
+        method: 'POST',
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        jaConcluido?: boolean;
+        erro?: string;
+      };
+      if (res.ok && data.ok) {
+        toast({
+          variant: 'success',
+          title: data.jaConcluido ? 'Já estava concluído' : 'Retomando a tarefa…',
+          description: persona ? persona.nome : entregavel.personaId,
+        });
+        onRetomado();
+      } else {
+        toast({
+          title: 'Não foi possível retomar',
+          description: data.erro,
+        });
+      }
+    } catch {
+      toast({ title: 'Não foi possível retomar' });
+    } finally {
+      setRetomando(false);
+    }
+  }
 
   React.useEffect(() => {
     if (!aberto || completo) return;
@@ -163,17 +204,45 @@ function EntregavelItem({
               {cfg.label}
             </Badge>
           </div>
-          {podeAbrir ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-1 h-7 self-start text-xs"
-              aria-expanded={aberto}
-              onClick={onToggle}
-            >
-              {aberto ? 'Ocultar' : 'Ver entregável'}
-            </Button>
-          ) : null}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {podeAbrir ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                aria-expanded={aberto}
+                onClick={onToggle}
+              >
+                {aberto ? 'Ocultar' : 'Ver entregável'}
+              </Button>
+            ) : null}
+
+            {entregavel.status === 'error' ? (
+              <Button
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => void retomar()}
+                disabled={retomando}
+              >
+                <RefreshCw
+                  className={cn('size-3.5', retomando && 'animate-spin')}
+                  aria-hidden
+                />
+                {retomando ? 'Retomando…' : 'Retomar'}
+              </Button>
+            ) : null}
+
+            {entregavel.status === 'working' ? (
+              <button
+                type="button"
+                onClick={() => void retomar()}
+                disabled={retomando}
+                className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+              >
+                {retomando ? 'Verificando…' : 'Travou? Retomar'}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -197,6 +266,7 @@ function EntregavelItem({
 function useEntregaveis(): {
   entregaveis: EntregavelResumo[];
   carregando: boolean;
+  refresh: () => Promise<void>;
 } {
   const [entregaveis, setEntregaveis] = React.useState<EntregavelResumo[]>([]);
   const [carregando, setCarregando] = React.useState(true);
@@ -204,49 +274,45 @@ function useEntregaveis(): {
   const statusRef = React.useRef<Map<string, PersonaStatus>>(new Map());
   const primeiraCarga = React.useRef(true);
 
-  React.useEffect(() => {
-    let vivo = true;
-    const carregar = async () => {
-      try {
-        const res = await fetch('/api/deliverables');
-        if (!res.ok) return;
-        const data = (await res.json()) as { entregaveis?: EntregavelResumo[] };
-        if (!vivo) return;
-        const lista = data.entregaveis ?? [];
+  const refresh = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/deliverables');
+      if (!res.ok) return;
+      const data = (await res.json()) as { entregaveis?: EntregavelResumo[] };
+      const lista = data.entregaveis ?? [];
 
-        // Detecta entregáveis recém-concluídos (exceto na 1ª carga).
-        if (!primeiraCarga.current) {
-          for (const e of lista) {
-            const anterior = statusRef.current.get(e.id);
-            if (e.status === 'done' && anterior && anterior !== 'done') {
-              const persona = PERSONAS[e.personaId];
-              toast({
-                variant: 'success',
-                title: '🎉 Novo entregável pronto!',
-                description: `${persona ? persona.nome : e.personaId}: ${e.titulo}`,
-              });
-            }
+      // Detecta entregáveis recém-concluídos (exceto na 1ª carga).
+      if (!primeiraCarga.current) {
+        for (const e of lista) {
+          const anterior = statusRef.current.get(e.id);
+          if (e.status === 'done' && anterior && anterior !== 'done') {
+            const persona = PERSONAS[e.personaId];
+            toast({
+              variant: 'success',
+              title: '🎉 Novo entregável pronto!',
+              description: `${persona ? persona.nome : e.personaId}: ${e.titulo}`,
+            });
           }
         }
-        for (const e of lista) statusRef.current.set(e.id, e.status);
-        primeiraCarga.current = false;
-
-        setEntregaveis(lista);
-      } catch {
-        // silencioso
-      } finally {
-        if (vivo) setCarregando(false);
       }
-    };
-    void carregar();
-    const id = setInterval(() => void carregar(), 6000);
-    return () => {
-      vivo = false;
-      clearInterval(id);
-    };
+      for (const e of lista) statusRef.current.set(e.id, e.status);
+      primeiraCarga.current = false;
+
+      setEntregaveis(lista);
+    } catch {
+      // silencioso
+    } finally {
+      setCarregando(false);
+    }
   }, []);
 
-  return { entregaveis, carregando };
+  React.useEffect(() => {
+    void refresh();
+    const id = setInterval(() => void refresh(), 6000);
+    return () => clearInterval(id);
+  }, [refresh]);
+
+  return { entregaveis, carregando, refresh };
 }
 
 function EstadoVazio() {
