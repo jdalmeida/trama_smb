@@ -108,11 +108,16 @@ export function ArtifactsPanel() {
   return (
     <aside className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Artefatos</h2>
+        <div className="flex flex-col">
+          <h2 className="text-base font-semibold text-foreground">Artefatos</h2>
+          <p className="text-xs text-muted-foreground">
+            A memória da empresa — notas, pesquisas, decisões e referências.
+          </p>
+        </div>
         <Button
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 text-xs"
+          className="gap-1.5"
           onClick={() => setCriando(true)}
         >
           <Plus className="size-3.5" aria-hidden />
@@ -164,7 +169,7 @@ function ArtefatoCard({
           aria-expanded={aberto}
         >
           <span className="flex w-full items-start justify-between gap-2">
-            <span className="min-w-0 break-words text-xs font-semibold text-foreground">
+            <span className="min-w-0 break-words text-sm font-semibold text-foreground">
               {artefato.titulo}
             </span>
             <Badge
@@ -206,7 +211,7 @@ function ArtefatoCard({
             </div>
           ) : null}
           <div className="min-w-0 break-words [overflow-wrap:anywhere]">
-            <Streamdown mode="static" className="flex flex-col gap-1.5 text-xs">
+            <Streamdown mode="static" className="flex flex-col gap-1.5 text-sm">
               {artefato.conteudo}
             </Streamdown>
           </div>

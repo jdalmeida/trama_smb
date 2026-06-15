@@ -64,7 +64,12 @@ export function DeliverablesPanel() {
   return (
     <aside className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-foreground">Entregáveis</h2>
+        <div className="flex flex-col">
+          <h2 className="text-base font-semibold text-foreground">Entregáveis</h2>
+          <p className="text-xs text-muted-foreground">
+            Tudo que o seu time já produziu.
+          </p>
+        </div>
         <span className="text-xs text-muted-foreground">
           {entregaveis.length === 0
             ? 'nenhum ainda'
@@ -143,7 +148,7 @@ function EntregavelItem({
           />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="break-words text-xs font-semibold text-foreground">
+          <p className="break-words text-sm font-semibold text-foreground">
             {entregavel.titulo}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">

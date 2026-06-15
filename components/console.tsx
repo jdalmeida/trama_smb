@@ -16,6 +16,7 @@ import {
 } from '@/components/conversations/conversation-list';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toaster } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
 
 export function Console() {
   // Conversa ativa: um ref (lido pelo transport) + um state (dispara render).
@@ -154,69 +155,114 @@ export function Console() {
     [chatRuns, apiRuns],
   );
 
+  // Visão principal: o chat (com a sidebar de conversas/time) ou uma página
+  // full-width de Entregáveis/Artefatos — mais larga e fácil de ler.
+  const [mainView, setMainView] = React.useState<
+    'chat' | 'entregaveis' | 'artefatos'
+  >('chat');
+
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_22rem]">
-      {/* Chat ocupa o espaço principal */}
-      <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm">
-        <Chat
-          messages={messages}
-          sendMessage={sendMessage}
-          status={status}
-          carregandoHistorico={carregandoHistorico}
-        />
-      </section>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <ViewSwitcher view={mainView} onChange={setMainView} />
 
-      {/* Sidebar: conversas + painéis */}
-      <aside className="flex min-h-0 flex-col">
-        <Tabs
-          defaultValue="conversas"
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="conversas" className="gap-1">
-              <MessagesSquare className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Conversas</span>
-            </TabsTrigger>
-            <TabsTrigger value="time" className="gap-1">
-              <Users className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Time</span>
-            </TabsTrigger>
-            <TabsTrigger value="entregaveis" className="gap-1">
-              <FileText className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Entregáveis</span>
-            </TabsTrigger>
-            <TabsTrigger value="artefatos" className="gap-1">
-              <Sparkles className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Artefatos</span>
-            </TabsTrigger>
-          </TabsList>
+      {mainView === 'chat' ? (
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
+          {/* Chat ocupa o espaço principal */}
+          <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm">
+            <Chat
+              messages={messages}
+              sendMessage={sendMessage}
+              status={status}
+              carregandoHistorico={carregandoHistorico}
+            />
+          </section>
 
-          <div className="mt-3 min-h-0 flex-1 rounded-xl border border-border bg-background p-3 shadow-sm">
-            <TabsContent value="conversas" className="mt-0 h-full">
-              <ConversationList
-                conversas={conversas}
-                activeId={activeId}
-                carregando={carregandoConversas}
-                onSelect={(id) => void selecionar(id)}
-                onNew={() => void novaConversa()}
-                onRename={(id, t) => void renomear(id, t)}
-                onDelete={(id) => void apagar(id)}
-              />
-            </TabsContent>
-            <TabsContent value="time" className="mt-0 h-full overflow-y-auto">
-              <TeamPanel runs={runs} />
-            </TabsContent>
-            <TabsContent value="entregaveis" className="mt-0 h-full">
+          {/* Sidebar: conversas + time */}
+          <aside className="flex min-h-0 flex-col">
+            <Tabs
+              defaultValue="conversas"
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="conversas" className="gap-1.5">
+                  <MessagesSquare className="size-3.5" aria-hidden />
+                  Conversas
+                </TabsTrigger>
+                <TabsTrigger value="time" className="gap-1.5">
+                  <Users className="size-3.5" aria-hidden />
+                  Time
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-3 min-h-0 flex-1 rounded-xl border border-border bg-background p-3 shadow-sm">
+                <TabsContent value="conversas" className="mt-0 h-full">
+                  <ConversationList
+                    conversas={conversas}
+                    activeId={activeId}
+                    carregando={carregandoConversas}
+                    onSelect={(id) => void selecionar(id)}
+                    onNew={() => void novaConversa()}
+                    onRename={(id, t) => void renomear(id, t)}
+                    onDelete={(id) => void apagar(id)}
+                  />
+                </TabsContent>
+                <TabsContent value="time" className="mt-0 h-full overflow-y-auto">
+                  <TeamPanel runs={runs} />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </aside>
+        </div>
+      ) : (
+        // Página full-width (Entregáveis ou Artefatos), em coluna legível.
+        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
+            {mainView === 'entregaveis' ? (
               <DeliverablesPanel />
-            </TabsContent>
-            <TabsContent value="artefatos" className="mt-0 h-full">
+            ) : (
               <ArtifactsPanel />
-            </TabsContent>
+            )}
           </div>
-        </Tabs>
-      </aside>
+        </section>
+      )}
 
       <Toaster />
+    </div>
+  );
+}
+
+/** Seletor da visão principal: Chat · Entregáveis · Artefatos. */
+function ViewSwitcher({
+  view,
+  onChange,
+}: {
+  view: 'chat' | 'entregaveis' | 'artefatos';
+  onChange: (v: 'chat' | 'entregaveis' | 'artefatos') => void;
+}) {
+  const itens = [
+    { id: 'chat' as const, label: 'Chat', Icon: MessagesSquare },
+    { id: 'entregaveis' as const, label: 'Entregáveis', Icon: FileText },
+    { id: 'artefatos' as const, label: 'Artefatos', Icon: Sparkles },
+  ];
+  return (
+    <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+      {itens.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onChange(id)}
+          aria-pressed={view === id}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+            view === id
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
