@@ -16,6 +16,8 @@ import { BusinessProfileSchema } from '@/src/domain/business-profile';
 import { PERSONA_IDS, type PersonaRunInput } from '@/src/domain/persona';
 import { getPersona } from '@/src/agents/registry';
 import { personaRunWorkflow } from '@/app/workflows/persona-run';
+import { getCrmAgent } from '@/src/agents/crm/agent';
+import { resumoCrm } from '@/src/lib/crm';
 
 /** Contexto de tenancy injetado nas tools do CEO (escopo do usuário/negócio). */
 export type CeoContext = { ownerUserId: string; businessId: string };
@@ -184,6 +186,41 @@ export function ceoTools(ctx: CeoContext): ToolSet {
           orchestratorRunId: plano.orchestratorRunId,
           itens: plano.itens,
         };
+      },
+    }),
+
+    delegarAoCrm: tool({
+      description:
+        'Aciona o agente de CRM para configurar ou operar o CRM do negócio a ' +
+        'partir de um pedido em linguagem natural: criar/ajustar funis, pontos ' +
+        'do funil, campos de cadastro (data-driven), e cadastrar/mover negócios ' +
+        '(cards) e contatos. Use quando o dono falar em organizar clientes, ' +
+        'oportunidades, funil de vendas, etapas ou cadastros. O agente de CRM ' +
+        'executa as mudanças na hora e devolve um resumo do que fez.',
+      inputSchema: z.object({
+        pedido: z
+          .string()
+          .describe(
+            'O que fazer no CRM, em linguagem natural e específico para este ' +
+              'negócio. Ex.: "criar um funil de vendas com etapas Lead, ' +
+              'Proposta, Fechado e um campo de Valor estimado".',
+          ),
+      }),
+      execute: async ({ pedido }) => {
+        const agente = getCrmAgent({ businessId: ctx.businessId });
+        const resultado = await agente.generate({ prompt: pedido });
+        return { ok: true as const, resumo: resultado.text };
+      },
+    }),
+
+    consultarCrm: tool({
+      description:
+        'Lê um resumo do CRM atual (funis, pontos e contagem de campos/cards). ' +
+        'Use para saber como o CRM está montado antes de propor mudanças ou de ' +
+        'delegar ao agente de CRM.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        return { resumo: await resumoCrm(ctx.businessId) };
       },
     }),
 

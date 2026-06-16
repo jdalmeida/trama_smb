@@ -3,15 +3,16 @@
 import * as React from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
-import { Brain, MessagesSquare, Sparkles, Users } from 'lucide-react';
+import { Brain, KanbanSquare, MessagesSquare, Sparkles, Users } from 'lucide-react';
 import { FileText } from 'lucide-react';
-import type { PersonaId } from '@/src/domain/persona';
+import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import type { BusinessProfile } from '@/src/domain/business-profile';
 import { Chat } from '@/components/chat/chat';
 import { TeamPanel, type ActiveRun } from '@/components/team/team-panel';
 import { ArtifactsPanel } from '@/components/artifacts/artifacts-panel';
 import { DeliverablesPanel } from '@/components/deliverables/deliverables-panel';
 import { MemoriesPanel } from '@/components/memories/memories-panel';
+import { CrmPanel } from '@/components/crm/crm-panel';
 import {
   ConversationList,
   type Conversa,
@@ -19,6 +20,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toaster } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+
+/** Visões principais do console (seletor no topo). */
+type MainView = 'chat' | 'entregaveis' | 'artefatos' | 'memorias' | 'crm';
 
 export function Console() {
   // Conversa ativa: um ref (lido pelo transport) + um state (dispara render).
@@ -164,9 +168,7 @@ export function Console() {
 
   // Visão principal: o chat (com a sidebar de conversas/time) ou uma página
   // full-width de Entregáveis/Artefatos — mais larga e fácil de ler.
-  const [mainView, setMainView] = React.useState<
-    'chat' | 'entregaveis' | 'artefatos' | 'memorias'
-  >('chat');
+  const [mainView, setMainView] = React.useState<MainView>('chat');
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -222,6 +224,11 @@ export function Console() {
             </Tabs>
           </aside>
         </div>
+      ) : mainView === 'crm' ? (
+        // CRM: full-width de verdade (o kanban precisa de espaço horizontal).
+        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
+          <CrmPanel />
+        </section>
       ) : (
         // Página full-width (Entregáveis, Artefatos ou Memórias), em coluna legível.
         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
@@ -247,16 +254,17 @@ export function Console() {
   );
 }
 
-/** Seletor da visão principal: Chat · Entregáveis · Artefatos · Memórias. */
+/** Seletor da visão principal: Chat · CRM · Entregáveis · Artefatos · Memórias. */
 function ViewSwitcher({
   view,
   onChange,
 }: {
-  view: 'chat' | 'entregaveis' | 'artefatos' | 'memorias';
-  onChange: (v: 'chat' | 'entregaveis' | 'artefatos' | 'memorias') => void;
+  view: MainView;
+  onChange: (v: MainView) => void;
 }) {
   const itens = [
     { id: 'chat' as const, label: 'Chat', Icon: MessagesSquare },
+    { id: 'crm' as const, label: 'CRM', Icon: KanbanSquare },
     { id: 'entregaveis' as const, label: 'Entregáveis', Icon: FileText },
     { id: 'artefatos' as const, label: 'Artefatos', Icon: Sparkles },
     { id: 'memorias' as const, label: 'Memórias', Icon: Brain },
@@ -377,6 +385,7 @@ function useApiRuns(): ActiveRun[] {
             runId: string;
             personaId: PersonaId;
             deliverableId: string | null;
+            status?: PersonaStatus;
           }[];
         };
         if (!vivo) return;
@@ -386,6 +395,7 @@ function useApiRuns(): ActiveRun[] {
             runId: r.runId,
             personaId: r.personaId,
             deliverableId: r.deliverableId as string,
+            status: r.status,
           }));
         setRuns(mapeados);
       } catch {
@@ -403,16 +413,23 @@ function useApiRuns(): ActiveRun[] {
   return runs;
 }
 
-/** Mescla runs do chat e do banco, deduplicando por runId. */
+/**
+ * Mescla runs do chat e do banco por runId. Os do chat não trazem status; os do
+ * banco (b) trazem runs.status. Em vez de descartar o duplicado, fundimos os
+ * campos para não perder o status persistido (que hidrata o painel "Time").
+ */
 function mesclarRuns(a: ActiveRun[], b: ActiveRun[]): ActiveRun[] {
-  const vistos = new Set<string>();
-  const out: ActiveRun[] = [];
+  const porId = new Map<string, ActiveRun>();
   for (const r of [...a, ...b]) {
-    if (vistos.has(r.runId)) continue;
-    vistos.add(r.runId);
-    out.push(r);
+    const existente = porId.get(r.runId);
+    porId.set(
+      r.runId,
+      existente
+        ? { ...existente, ...r, status: r.status ?? existente.status }
+        : r,
+    );
   }
-  return out;
+  return [...porId.values()];
 }
 
 /**
