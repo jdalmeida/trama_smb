@@ -21,6 +21,13 @@ export interface ActiveRun {
   runId: string;
   personaId: PersonaId;
   deliverableId: string;
+  /**
+   * Status persistido no banco (runs.status), quando conhecido. Hidrata o card
+   * antes de o stream ao vivo conectar — um run já concluído não reemite o
+   * evento terminal pelo stream, então sem isto o card ficaria preso em
+   * "working". Ausente para runs recém-derivados do chat (tratados como working).
+   */
+  status?: PersonaStatus;
 }
 
 interface RunState {
@@ -50,6 +57,8 @@ export function TeamPanel({ runs }: TeamPanelProps) {
     Record<string, DeliverableData | undefined>
   >({});
   const [aberto, setAberto] = React.useState<string | null>(null);
+  // runIds cujo entregável já buscamos — evita refetch a cada poll de runs.
+  const entregaveisSolicitados = React.useRef<Set<string>>(new Set());
 
   const setPersonaState = React.useCallback(
     (personaId: PersonaId, patch: Partial<RunState>) => {
@@ -62,12 +71,14 @@ export function TeamPanel({ runs }: TeamPanelProps) {
   );
 
   const carregarEntregavel = React.useCallback(async (runId: string) => {
+    if (entregaveisSolicitados.current.has(runId)) return;
     try {
       const res = await fetch(`/api/runs/${runId}`);
       if (!res.ok) return;
       const data = (await res.json()) as { deliverable?: DeliverableData } & DeliverableData;
       const d = (data.deliverable ?? data) as DeliverableData | undefined;
       if (d && d.id) {
+        entregaveisSolicitados.current.add(runId);
         setDeliverables((prev) => ({ ...prev, [d.id]: d }));
       }
     } catch {
@@ -83,11 +94,15 @@ export function TeamPanel({ runs }: TeamPanelProps) {
       const controller = new AbortController();
       controllers.push(controller);
 
-      // marca como trabalhando assim que o run aparece
+      // hidrata com o status do banco (se conhecido); senão assume working.
+      // Um run já concluído não reemite o evento terminal pelo stream, então
+      // hidratar aqui evita o card preso em "Trabalhando".
+      const statusInicial = run.status ?? 'working';
       setPersonaState(run.personaId, {
-        status: 'working',
+        status: statusInicial,
         deliverableId: run.deliverableId,
       });
+      if (statusInicial === 'done') void carregarEntregavel(run.runId);
 
       (async () => {
         try {
@@ -152,6 +167,31 @@ export function TeamPanel({ runs }: TeamPanelProps) {
     // re-conecta quando a lista de runIds muda
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs.map((r) => r.runId).join(',')]);
+
+  // Sincroniza o status terminal vindo do banco (runs.status), que chega pelo
+  // poll de /api/runs DEPOIS do effect de stream (mesmos runIds → aquele não
+  // re-roda). Um run já concluído não reemite o evento terminal pelo stream,
+  // então sem isto o card ficaria preso em "Trabalhando". Só promove — nunca
+  // regride de done/error para working.
+  React.useEffect(() => {
+    for (const run of runs) {
+      const statusBanco = run.status;
+      if (statusBanco !== 'done' && statusBanco !== 'error') continue;
+      setByPersona((prev) => {
+        const atual = prev[run.personaId];
+        if (atual?.status === 'done' || atual?.status === 'error') return prev;
+        return {
+          ...prev,
+          [run.personaId]: {
+            ...(atual ?? {}),
+            status: statusBanco,
+            deliverableId: atual?.deliverableId ?? run.deliverableId,
+          },
+        };
+      });
+      if (statusBanco === 'done') void carregarEntregavel(run.runId);
+    }
+  }, [runs, carregarEntregavel]);
 
   return (
     <aside className="flex flex-col gap-3">
