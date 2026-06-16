@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   createAgentUIStreamResponse,
+  generateId,
   type InferAgentUIMessage,
   type UIMessage,
 } from 'ai';
@@ -36,6 +37,11 @@ function textoDe(message: UIMessage): string {
  * onFinish — que o AI SDK AGUARDA no flush do stream antes de fechá-lo, então a
  * função fica viva até a escrita concluir (local e no Vercel Fluid). Erros são
  * logados em vez de silenciados, para que falhas de persistência apareçam.
+ *
+ * IMPORTANTE: passamos `generateMessageId` para a resposta sair com um id único
+ * (ver comentário na chamada). Sem ele, todas as respostas do agente nasciam
+ * com id vazio e, como salvarMensagens faz upsert por id, cada nova resposta
+ * sobrescrevia a anterior — só a última do agente sobrevivia no banco.
  */
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -75,8 +81,14 @@ export async function POST(req: Request) {
   return createAgentUIStreamResponse({
     agent,
     uiMessages: messages,
-    // Modo persistência: garante id estável na mensagem de resposta.
+    // Modo persistência: habilita a geração de id para a mensagem de resposta.
     originalMessages: messages as InferAgentUIMessage<typeof agent>[],
+    // Gera um id único para a resposta do agente. SEM isto o SDK só atribui id
+    // quando a última mensagem original é do assistente (não é o caso: a última
+    // é sempre a do usuário), então a resposta sairia com id ''. Como
+    // salvarMensagens faz upsert por id, todas as respostas colidiam no mesmo
+    // id vazio e cada uma apagava a anterior — só a última do agente persistia.
+    generateMessageId: generateId,
     // Expõe o id da conversa ao cliente (ele guarda para os próximos envios).
     headers: { 'x-conversation-id': convId },
     onFinish: async ({ responseMessage, isAborted }) => {

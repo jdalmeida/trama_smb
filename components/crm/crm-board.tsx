@@ -277,12 +277,12 @@ function KanbanCard({
                   key={c.chave}
                   variant="outline"
                   className={cn(
-                    'text-[10px]',
+                    'max-w-full text-[10px]',
                     c.tipo === 'currency' &&
                       'border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
                   )}
                 >
-                  {c.texto}
+                  <span className="min-w-0 truncate">{c.texto}</span>
                 </Badge>
               ))}
             </div>
