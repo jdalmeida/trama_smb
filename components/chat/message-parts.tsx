@@ -8,12 +8,14 @@ import {
   CircleX,
   Clock,
   FileText,
+  KanbanSquare,
   Loader2,
   ScrollText,
   Send,
   ShieldQuestion,
   Workflow,
   Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +60,40 @@ const TOOL_NOME: Record<string, string> = {
   proporPlano: 'Propor plano',
   salvarPerfil: 'Salvar perfil',
   lerPerfil: 'Ler perfil',
+  // CRM (CEO + agente de CRM)
+  delegarAoCrm: 'Organizar no CRM',
+  consultarCrm: 'Consultar CRM',
+  resumoCrm: 'Resumo do CRM',
+  listarFunis: 'Listar funis',
+  criarFunil: 'Criar funil',
+  editarFunil: 'Editar funil',
+  listarPontos: 'Listar pontos',
+  criarPonto: 'Criar ponto do funil',
+  editarPonto: 'Editar ponto',
+  apagarPonto: 'Apagar ponto',
+  listarCampos: 'Listar campos',
+  criarCampo: 'Criar campo',
+  editarCampo: 'Editar campo',
+  apagarCampo: 'Apagar campo',
+  listarContatos: 'Listar contatos',
+  criarContato: 'Cadastrar contato',
+  editarContato: 'Editar contato',
+  verFunil: 'Ver funil',
+  criarCard: 'Criar card',
+  editarCard: 'Editar card',
+  moverCard: 'Mover card',
+  apagarCard: 'Apagar card',
+  listarAutomacoes: 'Listar automações',
+  criarAutomacao: 'Criar automação',
+  editarAutomacao: 'Editar automação',
+  apagarAutomacao: 'Apagar automação',
+  historicoAutomacoes: 'Histórico de automações',
+  rodarAutomacoesParadas: 'Verificar cards parados',
+  listarAtividades: 'Listar agenda',
+  criarAtividade: 'Agendar atividade',
+  editarAtividade: 'Editar atividade',
+  concluirAtividade: 'Concluir atividade',
+  apagarAtividade: 'Apagar atividade',
 };
 
 /** Ícone (lucide) por tool conhecida. */
@@ -67,6 +103,19 @@ const TOOL_ICONE: Record<string, LucideIcon> = {
   proporPlano: ScrollText,
   salvarPerfil: FileText,
   lerPerfil: FileText,
+  delegarAoCrm: KanbanSquare,
+  consultarCrm: KanbanSquare,
+  resumoCrm: KanbanSquare,
+  criarFunil: KanbanSquare,
+  verFunil: KanbanSquare,
+  criarAutomacao: Zap,
+  editarAutomacao: Zap,
+  listarAutomacoes: Zap,
+  historicoAutomacoes: Zap,
+  criarAtividade: Clock,
+  listarAtividades: Clock,
+  editarAtividade: Clock,
+  concluirAtividade: Clock,
 };
 
 function toolNomeAmigavel(toolName: string): string {
@@ -234,6 +283,25 @@ function ToolDetalhe({
         {getString(output, 'erro') ?? 'Não foi possível concluir esta ação.'}
       </p>
     );
+  }
+
+  // delegarAoCrm / consultarCrm: mostra o resumo devolvido pelo agente de CRM
+  if (
+    (toolName === 'delegarAoCrm' || toolName === 'consultarCrm') &&
+    state === 'output-available' &&
+    isRecord(output)
+  ) {
+    const resumo = getString(output, 'resumo');
+    if (resumo) {
+      return (
+        <p className="mt-1.5 whitespace-pre-wrap text-xs text-muted-foreground">
+          {resumo}
+        </p>
+      );
+    }
+  }
+  if (toolName === 'delegarAoCrm' && state !== 'output-available') {
+    return <p className="mt-1.5 text-xs text-muted-foreground">Ajustando o CRM…</p>;
   }
 
   // proporPlano: mostra o resumo do plano proposto
