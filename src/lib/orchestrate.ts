@@ -42,6 +42,7 @@ export async function iniciarPlano(
         businessId,
         personaId: t.personaId,
         titulo: `${persona.nome}: ${t.tarefa}`,
+        tarefa: t.tarefa,
         status: 'working',
       })
       .returning();

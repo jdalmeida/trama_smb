@@ -33,7 +33,8 @@ export function Chat({
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const sendIconRef = React.useRef<SendIconHandle | null>(null);
 
-  const ocupado = status === 'submitted' || status === 'streaming';
+  const ocupado =
+    status === 'submitted' || status === 'streaming' || carregandoHistorico;
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

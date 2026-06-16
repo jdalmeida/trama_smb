@@ -30,6 +30,52 @@ import type { BusinessProfile } from '@/src/domain/business-profile';
  * app/steps/web.ts; as de memória da empresa em app/steps/memoria.ts.
  */
 
+/** Estado de checkpoint de um entregável, lido no início do run para retomada. */
+export interface DeliverableCheckpoint {
+  rascunho: string | null;
+  content: DeliverableContent | null;
+  tarefa: string | null;
+}
+
+/**
+ * Lê o checkpoint do entregável (rascunho/conteúdo/tarefa já persistidos). O
+ * workflow usa isto para pular etapas já concluídas numa retomada.
+ */
+export async function lerCheckpoint(
+  deliverableId: string,
+): Promise<DeliverableCheckpoint | null> {
+  'use step';
+  const rows = await getDb()
+    .select({
+      rascunho: deliverables.rascunho,
+      content: deliverables.content,
+      tarefa: deliverables.tarefa,
+    })
+    .from(deliverables)
+    .where(eq(deliverables.id, deliverableId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    rascunho: row.rascunho ?? null,
+    content: row.content ?? null,
+    tarefa: row.tarefa ?? null,
+  };
+}
+
+/** Persiste o rascunho do agente (checkpoint), mantendo status 'working'. */
+export async function salvarRascunho(
+  deliverableId: string,
+  rascunho: string,
+): Promise<void> {
+  'use step';
+  console.log('[salvarRascunho]', { deliverableId, tamanho: rascunho.length });
+  await getDb()
+    .update(deliverables)
+    .set({ rascunho, updatedAt: new Date() })
+    .where(eq(deliverables.id, deliverableId));
+}
+
 /** Persiste o conteúdo final do entregável e marca como concluído. */
 export async function salvarEntregavel(
   deliverableId: string,

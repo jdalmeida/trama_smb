@@ -53,15 +53,44 @@ export const deliverables = pgTable(
       .references(() => businesses.id, { onDelete: 'cascade' }),
     personaId: varchar('persona_id', { length: 64 }).$type<PersonaId>().notNull(),
     titulo: text('titulo').notNull(),
+    /** Tarefa em linguagem natural que originou o entregável — usada p/ retomar. */
+    tarefa: text('tarefa'),
     status: varchar('status', { length: 32 })
       .$type<PersonaStatus>()
       .notNull()
       .default('working'),
+    /**
+     * Checkpoint: rascunho do agente já gerado. Se um run falha após produzir o
+     * rascunho mas antes de estruturar o entregável, a retomada reaproveita
+     * este texto em vez de regenerar com o LLM.
+     */
+    rascunho: text('rascunho'),
     content: jsonb('content').$type<DeliverableContent>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('deliverables_business_idx').on(t.businessId)],
+);
+
+/**
+ * Uma conversa com o CEO. O chat deixou de ser um fio único e contínuo: o
+ * usuário cria várias conversas e navega entre elas, e cada uma carrega só o
+ * seu próprio histórico (o "contexto necessário"). A memória da empresa
+ * (artifacts/perfil/entregáveis) continua compartilhada entre todas.
+ */
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    /** Título curto, derivado da 1ª mensagem do usuário (ou renomeado por ele). */
+    titulo: text('titulo'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('conversations_business_idx').on(t.businessId)],
 );
 
 /** Histórico do chat com o CEO — uma linha por UIMessage (jsonb completa). */
@@ -72,11 +101,21 @@ export const chatMessages = pgTable(
     businessId: uuid('business_id')
       .notNull()
       .references(() => businesses.id, { onDelete: 'cascade' }),
+    /**
+     * Conversa a que a mensagem pertence. Nullable por compatibilidade com
+     * linhas antigas (pré-conversas); a aplicação sempre grava com valor.
+     */
+    conversationId: uuid('conversation_id').references(() => conversations.id, {
+      onDelete: 'cascade',
+    }),
     role: varchar('role', { length: 16 }).notNull(),
     message: jsonb('message').$type<UIMessage>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('chat_messages_business_idx').on(t.businessId)],
+  (t) => [
+    index('chat_messages_business_idx').on(t.businessId),
+    index('chat_messages_conversation_idx').on(t.conversationId),
+  ],
 );
 
 /** Categorias de artefato na memória da empresa. */
