@@ -1,52 +1,63 @@
-'use client';
-
 import Link from 'next/link';
-import { useRef } from 'react';
-import { motion } from 'motion/react';
 
-import { Button } from '@/components/ui/button';
-import { RocketIcon, type RocketIconHandle } from '@/components/ui/rocket';
+import { ArrowRightIcon } from '@/components/landing/icons';
+import { CTA_LABEL } from '@/components/landing/constants';
 
 export function FinalCta() {
-  const rocketRef = useRef<RocketIconHandle>(null);
-
   return (
     <section
       aria-labelledby="cta-final-titulo"
-      className="relative overflow-hidden py-20 sm:py-28"
+      className="mx-auto"
+      style={{
+        maxWidth: 780,
+        textAlign: 'center',
+        padding:
+          'clamp(20px,3vw,40px) clamp(20px,4vw,32px) clamp(70px,9vw,110px)',
+      }}
     >
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="absolute bottom-[-14rem] left-1/2 h-[24rem] w-[40rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="relative mx-auto flex w-full max-w-3xl flex-col items-center px-4 text-center sm:px-6"
+      <div
+        style={{
+          background:
+            'linear-gradient(135deg,rgba(139,92,246,.18),rgba(192,38,211,.1))',
+          border: '1px solid rgba(139,92,246,.3)',
+          borderRadius: 28,
+          padding: 'clamp(40px,6vw,60px) clamp(28px,4vw,44px)',
+        }}
       >
         <h2
           id="cta-final-titulo"
-          className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
+          style={{
+            fontSize: 'clamp(34px,5.2vw,46px)',
+            lineHeight: 1.04,
+            letterSpacing: '-.035em',
+            fontWeight: 800,
+            margin: 0,
+          }}
         >
-          Pronto para montar o seu time?
+          Comece a tecer hoje
         </h2>
-        <p className="mt-4 max-w-xl text-base text-muted-foreground">
-          Crie sua conta, converse com o CEO da Trama e receba os primeiros
-          planos para o seu negócio.
+        <p
+          style={{
+            margin: '16px auto 0',
+            maxWidth: 440,
+            fontSize: 16.5,
+            color: 'rgba(255,255,255,.66)',
+          }}
+        >
+          Converse com o CEO da Trama e veja o seu time ganhar forma em minutos.
         </p>
-        <Button size="lg" className="mt-8 h-11 px-6 text-base" asChild>
-          <Link
-            href="/sign-up"
-            onMouseEnter={() => rocketRef.current?.startAnimation()}
-            onMouseLeave={() => rocketRef.current?.stopAnimation()}
-          >
-            Começar agora
-            <RocketIcon ref={rocketRef} size={18} aria-hidden="true" />
-          </Link>
-        </Button>
-      </motion.div>
+        <Link
+          href="/sign-up"
+          className="tr-btn-white"
+          style={{ marginTop: 28, fontSize: 16, padding: '14px 28px' }}
+        >
+          {CTA_LABEL}
+          <ArrowRightIcon size={18} />
+        </Link>
+        <p style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,.4)' }}>
+          Sem cartão de crédito
+        </p>
+      </div>
     </section>
   );
 }

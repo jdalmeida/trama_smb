@@ -1,46 +1,70 @@
 import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
+import { SparkleIcon } from '@/components/landing/icons';
 
 const NAV_LINKS = [
-  { href: '#como-funciona', label: 'Como funciona' },
-  { href: '#time-de-agentes', label: 'Time de agentes' },
+  { href: '#como', label: 'Como funciona' },
+  { href: '#time', label: 'Time' },
+  { href: '#confianca', label: 'Confiança' },
 ];
 
 export function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-50 border-b backdrop-blur-md"
+      style={{
+        background: 'rgba(12,10,18,.55)',
+        borderColor: 'rgba(255,255,255,.06)',
+      }}
+    >
       <nav
         aria-label="Navegação principal"
-        className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"
+        className="mx-auto flex items-center justify-between"
+        style={{ maxWidth: 1180, height: 70, padding: '0 clamp(20px,4vw,32px)' }}
       >
         <Link
           href="/"
-          className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
+          className="flex items-center"
+          style={{
+            gap: 10,
+            fontWeight: 700,
+            fontSize: 18,
+            letterSpacing: '-.02em',
+            color: '#fff',
+            textDecoration: 'none',
+          }}
         >
-          <span aria-hidden="true">🧵</span>
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              borderRadius: 9,
+              background: 'linear-gradient(135deg,#a78bfa,#7c3aed)',
+              color: '#fff',
+            }}
+          >
+            <SparkleIcon size={17} />
+          </span>
           Trama
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" asChild>
-            <Link href="/sign-in">Entrar</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sign-up">Começar agora</Link>
-          </Button>
+        <div className="flex items-center" style={{ gap: 'clamp(14px,3vw,28px)' }}>
+          <div
+            className="hidden items-center sm:flex"
+            style={{ gap: 'clamp(14px,3vw,28px)' }}
+          >
+            {NAV_LINKS.map((link) => (
+              <a key={link.href} href={link.href} className="tr-navlink">
+                {link.label}
+              </a>
+            ))}
+          </div>
+          <Link href="/sign-up" className="tr-btn-pill">
+            Começar
+          </Link>
         </div>
       </nav>
     </header>
