@@ -140,3 +140,123 @@
     @apply font-sans;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Landing "A Trama" (página inicial / dark)
+   Keyframes e classes interativas. Os hovers ficam aqui (e não inline) porque
+   estilos inline têm prioridade sobre classes e impediriam o :hover.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes tr-up { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tr-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes tr-glow { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+@keyframes tr-bar { from { width: 0; } to { width: var(--w); } }
+@keyframes tr-spin { to { transform: rotate(360deg); } }
+@keyframes tr-dash { to { stroke-dashoffset: -200; } }
+@keyframes tr-pulse {
+  0% { transform: translate(-50%, -50%) scale(.55); opacity: .55; }
+  100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+}
+
+.trama-landing ::selection { background: rgba(139, 92, 246, .35); }
+
+.tr-navlink {
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, .7);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color .15s;
+}
+.tr-navlink:hover { color: #fff; }
+
+.tr-btn-pill {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0c0a12;
+  background: #fff;
+  padding: 9px 17px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: transform .15s, box-shadow .15s;
+}
+.tr-btn-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -8px rgba(255, 255, 255, .45);
+}
+
+.tr-btn-white {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #0c0a12;
+  background: #fff;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform .15s, box-shadow .15s;
+}
+.tr-btn-white:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -12px rgba(255, 255, 255, .5);
+}
+
+.tr-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background .15s, border-color .15s;
+}
+.tr-btn-ghost:hover {
+  background: rgba(255, 255, 255, .14);
+  border-color: rgba(255, 255, 255, .26);
+}
+
+.tr-step {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  padding: 28px;
+  backdrop-filter: blur(6px);
+  transition: transform .2s, border-color .2s, background .2s;
+}
+.tr-step:hover {
+  background: rgba(255, 255, 255, .06);
+  border-color: var(--tr-hover, rgba(139, 92, 246, .4));
+  transform: translateY(-4px);
+}
+
+.tr-persona {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  padding: 24px;
+  transition: border-color .2s, background .2s;
+}
+.tr-persona:hover {
+  background: rgba(255, 255, 255, .06);
+  border-color: var(--tr-hover, rgba(255, 255, 255, .2));
+}
+
+.tr-footlink {
+  color: rgba(255, 255, 255, .55);
+  text-decoration: none;
+  transition: color .15s;
+}
+.tr-footlink:hover { color: #fff; }
+
+/* Respeita usuários que pedem menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .trama-landing *,
+  .trama-landing *::before,
+  .trama-landing *::after {
+    animation: none !important;
+  }
+}

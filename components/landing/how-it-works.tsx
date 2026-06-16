@@ -1,143 +1,125 @@
-'use client';
+import type { CSSProperties } from 'react';
 
-import { useRef, type ComponentType, type RefObject } from 'react';
-import { motion, type Variants } from 'motion/react';
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { MessageCircleMoreIcon } from '@/components/ui/message-circle-more';
-import { WorkflowIcon } from '@/components/ui/workflow';
-import { FileTextIcon } from '@/components/ui/file-text';
-
-type AnimatedIconHandle = {
-  startAnimation: () => void;
-  stopAnimation: () => void;
-};
-
-type AnimatedIcon = ComponentType<{
-  ref?: RefObject<AnimatedIconHandle | null>;
-  size?: number;
-  className?: string;
-  'aria-hidden'?: boolean | 'true' | 'false';
-}>;
-
-type Step = {
-  numero: string;
-  titulo: string;
-  descricao: string;
-  Icone: AnimatedIcon;
-};
-
-const STEPS: Step[] = [
+const STEPS = [
   {
-    numero: '1',
-    titulo: 'Conte sobre o seu negócio',
-    descricao:
-      'Converse com o CEO da Trama como conversaria com um sócio: o que você vende, para quem e onde. Ele monta o Perfil do Negócio com você.',
-    Icone: MessageCircleMoreIcon as AnimatedIcon,
+    n: '01',
+    color: '#7c3aed',
+    hover: 'rgba(139,92,246,.4)',
+    title: 'Você conversa',
+    body: 'Conte sobre o negócio pro CEO da Trama como conversaria com um sócio. Ele entende o contexto e monta o Perfil do Negócio com você.',
   },
   {
-    numero: '2',
-    titulo: 'Aprove o plano proposto',
-    descricao:
-      'O CEO propõe um plano de trabalho claro e delega tarefas às personas certas do time. Nada acontece sem a sua aprovação.',
-    Icone: WorkflowIcon as AnimatedIcon,
+    n: '02',
+    color: '#9333ea',
+    hover: 'rgba(147,51,234,.4)',
+    title: 'Os fios se cruzam',
+    body: 'Aprovado o plano, o CEO delega às personas. Cada agente puxa o seu fio, coordenados em tempo real. Nada anda sem o seu ok.',
   },
   {
-    numero: '3',
-    titulo: 'Acompanhe e receba os planos',
-    descricao:
-      'Veja o time trabalhando ao vivo no painel e receba planos acionáveis: conteúdo, pesquisa de mercado e prospecção prontos para você executar.',
-    Icone: FileTextIcon as AnimatedIcon,
+    n: '03',
+    color: '#c026d3',
+    hover: 'rgba(192,38,211,.4)',
+    title: 'Vira tecido',
+    body: 'Você recebe planos acionáveis — conteúdo, mercado e prospecção — costurados num só lugar, prontos pra executar.',
   },
 ];
-
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: (index: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: 'easeOut', delay: index * 0.12 },
-  }),
-};
-
-function StepCard({ step, index }: { step: Step; index: number }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
-  const { Icone } = step;
-
-  return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-80px' }}
-    >
-      <Card
-        className="h-full transition-all duration-300 hover:-translate-y-1 hover:ring-primary/30"
-        onMouseEnter={() => iconRef.current?.startAnimation()}
-        onMouseLeave={() => iconRef.current?.stopAnimation()}
-      >
-        <CardHeader>
-          <div className="mb-3 flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icone ref={iconRef} size={20} aria-hidden="true" />
-            </span>
-            <span className="text-xs font-medium text-muted-foreground">
-              Passo {step.numero}
-            </span>
-          </div>
-          <CardTitle className="text-lg tracking-tight">
-            {step.titulo}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CardDescription className="text-sm leading-relaxed">
-            {step.descricao}
-          </CardDescription>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
 
 export function HowItWorks() {
   return (
     <section
-      id="como-funciona"
-      aria-labelledby="como-funciona-titulo"
-      className="scroll-mt-20 py-20 sm:py-28"
+      id="como"
+      aria-labelledby="como-titulo"
+      className="mx-auto"
+      style={{
+        maxWidth: 1100,
+        padding:
+          'clamp(20px,3vw,40px) clamp(20px,4vw,32px) clamp(60px,8vw,90px)',
+        scrollMarginTop: 84,
+      }}
     >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="mx-auto max-w-2xl text-center"
+      <div style={{ textAlign: 'center', marginBottom: 50 }}>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#a78bfa',
+            letterSpacing: '.1em',
+            textTransform: 'uppercase',
+            margin: '0 0 12px',
+          }}
         >
-          <p className="text-sm font-medium text-primary">Como funciona</p>
-          <h2
-            id="como-funciona-titulo"
-            className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
-          >
-            Do primeiro papo ao plano pronto, em três passos
-          </h2>
-          <p className="mt-4 text-base text-muted-foreground">
-            Sem formulários intermináveis: você conversa, aprova e acompanha.
-          </p>
-        </motion.div>
+          Como funciona
+        </p>
+        <h2
+          id="como-titulo"
+          style={{
+            fontSize: 'clamp(30px,4.5vw,40px)',
+            lineHeight: 1.08,
+            letterSpacing: '-.03em',
+            fontWeight: 700,
+            margin: 0,
+          }}
+        >
+          Três fios, um tecido
+        </h2>
+        <p
+          style={{
+            margin: '14px auto 0',
+            maxWidth: 480,
+            fontSize: 16,
+            color: 'rgba(255,255,255,.6)',
+          }}
+        >
+          Do primeiro papo ao plano pronto. Você conversa, aprova e acompanha.
+        </p>
+      </div>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <StepCard key={step.numero} step={step} index={index} />
-          ))}
-        </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))',
+          gap: 20,
+        }}
+      >
+        {STEPS.map((step) => (
+          <div
+            key={step.n}
+            className="tr-step"
+            style={{ '--tr-hover': step.hover } as CSSProperties}
+          >
+            <div
+              style={{
+                fontFamily: 'var(--font-mono), monospace',
+                fontSize: 32,
+                fontWeight: 500,
+                color: step.color,
+                marginBottom: 18,
+              }}
+            >
+              {step.n}
+            </div>
+            <h3
+              style={{
+                fontSize: 20,
+                fontWeight: 600,
+                letterSpacing: '-.02em',
+                margin: '0 0 8px',
+              }}
+            >
+              {step.title}
+            </h3>
+            <p
+              style={{
+                fontSize: 14.5,
+                lineHeight: 1.6,
+                color: 'rgba(255,255,255,.6)',
+                margin: 0,
+              }}
+            >
+              {step.body}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   );

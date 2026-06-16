@@ -1,167 +1,242 @@
-'use client';
+import type { CSSProperties } from 'react';
 
-import { useRef, type ComponentType, type RefObject } from 'react';
-import { motion, type Variants } from 'motion/react';
-
-import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { BotIcon } from '@/components/ui/bot';
-import { ZapIcon } from '@/components/ui/zap';
-import { SearchIcon } from '@/components/ui/search';
-import { UsersIcon } from '@/components/ui/users';
+  ContentIcon,
+  SparkleIcon,
+  SearchIcon,
+  UsersIcon,
+} from '@/components/landing/icons';
 
-type AnimatedIconHandle = {
-  startAnimation: () => void;
-  stopAnimation: () => void;
-};
-
-type AnimatedIcon = ComponentType<{
-  ref?: RefObject<AnimatedIconHandle | null>;
-  size?: number;
-  className?: string;
-  'aria-hidden'?: boolean | 'true' | 'false';
-}>;
-
-type Agent = {
-  emoji: string;
-  nome: string;
-  papel: string;
-  descricao: string;
-  Icone: AnimatedIcon;
-  destaque?: boolean;
-};
-
-const AGENTS: Agent[] = [
+const PERSONAS = [
   {
-    emoji: '🧠',
-    nome: 'CEO',
-    papel: 'Coordena o time',
-    descricao:
-      'Conversa com você, monta o Perfil do Negócio, propõe planos de trabalho e delega tarefas às personas certas. É o seu ponto de contato único.',
-    Icone: BotIcon as AnimatedIcon,
-    destaque: true,
+    color: '#fbbf77',
+    hover: 'rgba(251,191,119,.4)',
+    role: 'Atrai clientes',
+    name: 'Conteúdo',
+    body: 'Plano de conteúdo e canais pensados pro seu público, onde ele já está.',
+    delay: '.5s',
+    Icon: ContentIcon,
   },
   {
-    emoji: '📣',
-    nome: 'Conteúdo / Aquisição',
-    papel: 'Atrai clientes',
-    descricao:
-      'Entrega um plano de conteúdo e canais: temas, formatos e calendário pensados para o seu público, para atrair clientes onde eles já estão.',
-    Icone: ZapIcon as AnimatedIcon,
+    color: '#7cc4ff',
+    hover: 'rgba(124,196,255,.4)',
+    role: 'Entende o mercado',
+    name: 'Mercado',
+    body: 'Pesquisa com fontes públicas: concorrentes, tendências e oportunidades.',
+    delay: '1s',
+    Icon: SearchIcon,
   },
   {
-    emoji: '🔎',
-    nome: 'Pesquisa de Mercado',
-    papel: 'Entende o mercado',
-    descricao:
-      'Faz pesquisa de mercado com fontes públicas: concorrentes, tendências e oportunidades no seu segmento, organizadas em um relatório claro.',
-    Icone: SearchIcon as AnimatedIcon,
-  },
-  {
-    emoji: '🤝',
-    nome: 'Vendas / Prospecção',
-    papel: 'Prepara a abordagem',
-    descricao:
-      'Monta um plano de prospecção com critérios de cliente ideal e roteiros de abordagem. Quem entra em contato é sempre você.',
-    Icone: UsersIcon as AnimatedIcon,
+    color: '#86efac',
+    hover: 'rgba(134,239,172,.4)',
+    role: 'Prepara a abordagem',
+    name: 'Prospecção',
+    body: 'Critérios de cliente ideal e roteiros. Quem entra em contato é sempre você.',
+    delay: '1.5s',
+    Icon: UsersIcon,
   },
 ];
-
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: (index: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: 'easeOut', delay: index * 0.1 },
-  }),
-};
-
-function AgentCard({ agent, index }: { agent: Agent; index: number }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
-  const { Icone } = agent;
-
-  return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-80px' }}
-    >
-      <Card
-        className={`h-full transition-all duration-300 hover:-translate-y-1 ${
-          agent.destaque
-            ? 'ring-primary/40 hover:ring-primary/60'
-            : 'hover:ring-primary/30'
-        }`}
-        onMouseEnter={() => iconRef.current?.startAnimation()}
-        onMouseLeave={() => iconRef.current?.stopAnimation()}
-      >
-        <CardHeader>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Icone ref={iconRef} size={22} aria-hidden="true" />
-            </span>
-            <Badge variant="secondary" className="text-xs">
-              {agent.papel}
-            </Badge>
-          </div>
-          <CardTitle className="text-lg tracking-tight">
-            <span aria-hidden="true" className="mr-1.5">
-              {agent.emoji}
-            </span>
-            {agent.nome}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CardDescription className="text-sm leading-relaxed">
-            {agent.descricao}
-          </CardDescription>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
 
 export function Agents() {
   return (
     <section
-      id="time-de-agentes"
-      aria-labelledby="time-de-agentes-titulo"
-      className="scroll-mt-20 border-t border-border/60 bg-secondary/30 py-20 sm:py-28"
+      id="time"
+      aria-labelledby="time-titulo"
+      className="mx-auto"
+      style={{
+        maxWidth: 1100,
+        padding: '0 clamp(20px,4vw,32px) clamp(60px,8vw,90px)',
+        scrollMarginTop: 84,
+      }}
     >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="mx-auto max-w-2xl text-center"
+      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#a78bfa',
+            letterSpacing: '.1em',
+            textTransform: 'uppercase',
+            margin: '0 0 12px',
+          }}
         >
-          <p className="text-sm font-medium text-primary">Time de agentes</p>
-          <h2
-            id="time-de-agentes-titulo"
-            className="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
-          >
-            Conheça quem trabalha pelo seu negócio
-          </h2>
-          <p className="mt-4 text-base text-muted-foreground">
-            Personas duráveis e especializadas, coordenadas pelo CEO e
-            acompanhadas ao vivo no painel Time.
-          </p>
-        </motion.div>
+          O time
+        </p>
+        <h2
+          id="time-titulo"
+          style={{
+            fontSize: 'clamp(30px,4.5vw,40px)',
+            lineHeight: 1.08,
+            letterSpacing: '-.03em',
+            fontWeight: 700,
+            margin: 0,
+          }}
+        >
+          Os fios da sua trama
+        </h2>
+        <p
+          style={{
+            margin: '14px auto 0',
+            maxWidth: 480,
+            fontSize: 16,
+            color: 'rgba(255,255,255,.6)',
+          }}
+        >
+          Personas duráveis e especializadas, coordenadas pelo CEO e
+          acompanhadas ao vivo.
+        </p>
+      </div>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {AGENTS.map((agent, index) => (
-            <AgentCard key={agent.nome} agent={agent} index={index} />
-          ))}
+      {/* CEO no topo, centralizado */}
+      <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            textAlign: 'left',
+            gap: 18,
+            alignItems: 'flex-start',
+            maxWidth: 500,
+            background:
+              'linear-gradient(135deg,rgba(139,92,246,.2),rgba(139,92,246,.05))',
+            border: '1px solid rgba(139,92,246,.45)',
+            borderRadius: 18,
+            padding: '24px 26px',
+            boxShadow: '0 0 70px -22px rgba(139,92,246,.7)',
+          }}
+        >
+          <span
+            style={{
+              flex: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: 'linear-gradient(135deg,#a78bfa,#7c3aed)',
+              color: '#fff',
+              animation: 'tr-float 4s ease-in-out infinite',
+            }}
+          >
+            <SparkleIcon size={26} strokeWidth={1.8} />
+          </span>
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#c4b5fd',
+                letterSpacing: '.05em',
+                textTransform: 'uppercase',
+                marginBottom: 5,
+              }}
+            >
+              Coordena o time
+            </div>
+            <h3
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                margin: '0 0 7px',
+                letterSpacing: '-.02em',
+              }}
+            >
+              CEO
+            </h3>
+            <p
+              style={{
+                fontSize: 14.5,
+                lineHeight: 1.55,
+                color: 'rgba(255,255,255,.66)',
+                margin: 0,
+              }}
+            >
+              Seu ponto de contato único. Conversa, monta o perfil e{' '}
+              <b style={{ color: '#fff', fontWeight: 600 }}>
+                delega às personas certas
+              </b>
+              .
+            </p>
+          </div>
         </div>
+      </div>
+
+      {/* conectores CEO → personas */}
+      <div aria-hidden="true" style={{ position: 'relative', height: 46 }}>
+        <span style={{ position: 'absolute', left: '50%', top: 0, width: 2, height: 24, transform: 'translateX(-1px)', background: 'rgba(139,92,246,.4)' }} />
+        <span style={{ position: 'absolute', left: '16.66%', right: '16.66%', top: 23, height: 2, background: 'rgba(139,92,246,.4)' }} />
+        <span style={{ position: 'absolute', left: '16.66%', top: 23, width: 2, height: 23, transform: 'translateX(-1px)', background: 'rgba(139,92,246,.4)' }} />
+        <span style={{ position: 'absolute', left: '50%', top: 23, width: 2, height: 23, transform: 'translateX(-1px)', background: 'rgba(139,92,246,.4)' }} />
+        <span style={{ position: 'absolute', left: '83.33%', top: 23, width: 2, height: 23, transform: 'translateX(-1px)', background: 'rgba(139,92,246,.4)' }} />
+        <span style={{ position: 'absolute', left: '50%', top: 18, width: 9, height: 9, borderRadius: 99, transform: 'translate(-50%,0)', background: '#a78bfa', boxShadow: '0 0 12px 2px rgba(167,139,250,.6)' }} />
+      </div>
+
+      {/* personas */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))',
+          gap: 18,
+        }}
+      >
+        {PERSONAS.map(({ Icon, ...p }) => (
+          <div
+            key={p.name}
+            className="tr-persona"
+            style={{ '--tr-hover': p.hover } as CSSProperties}
+          >
+            <span
+              style={{
+                flex: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 48,
+                height: 48,
+                borderRadius: 13,
+                background: 'rgba(255,255,255,.07)',
+                color: p.color,
+                animation: `tr-float 4s ease-in-out ${p.delay} infinite`,
+              }}
+            >
+              <Icon size={24} strokeWidth={1.8} />
+            </span>
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: p.color,
+                  letterSpacing: '.05em',
+                  textTransform: 'uppercase',
+                  marginBottom: 5,
+                }}
+              >
+                {p.role}
+              </div>
+              <h3
+                style={{
+                  fontSize: 21,
+                  fontWeight: 700,
+                  margin: '0 0 7px',
+                  letterSpacing: '-.02em',
+                }}
+              >
+                {p.name}
+              </h3>
+              <p
+                style={{
+                  fontSize: 14.5,
+                  lineHeight: 1.55,
+                  color: 'rgba(255,255,255,.6)',
+                  margin: 0,
+                }}
+              >
+                {p.body}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
