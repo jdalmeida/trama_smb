@@ -4,6 +4,7 @@ import * as React from 'react';
 import { isToolUIPart, type UIMessage } from 'ai';
 import type { BusinessProfile } from '@/src/domain/business-profile';
 import { MessageParts } from '@/components/chat/message-parts';
+import { ProfileFields } from '@/components/profile/profile-fields';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +21,14 @@ export interface ChatProps {
   status: ChatStatus;
   /** True enquanto o histórico persistido ainda está sendo carregado. */
   carregandoHistorico?: boolean;
+  /**
+   * Se o Perfil do Negócio já foi confirmado pelo dono. Quando `true`, o card
+   * de confirmação não aparece no chat (o perfil vive na aba "Memórias"); só
+   * surge enquanto está `false` (onboarding ou reconfirmação após edição).
+   */
+  perfilVerificado?: boolean | null;
+  /** Confirma o perfil extraído na conversa (marca como verificado). */
+  onConfirmarPerfil?: (profile: BusinessProfile) => Promise<void> | void;
 }
 
 export function Chat({
@@ -27,6 +36,8 @@ export function Chat({
   sendMessage,
   status,
   carregandoHistorico = false,
+  perfilVerificado = null,
+  onConfirmarPerfil,
 }: ChatProps) {
   const [input, setInput] = React.useState('');
   const bottomRef = React.useRef<HTMLDivElement | null>(null);
@@ -44,6 +55,10 @@ export function Chat({
     () => extrairUltimoPerfil(messages),
     [messages],
   );
+
+  // O card de confirmação só aparece enquanto o perfil não foi verificado.
+  // Depois de confirmado ele vive na aba "Memórias" — não polui mais o chat.
+  const mostrarPerfil = profile !== null && perfilVerificado === false;
 
   async function enviar() {
     const texto = input.trim();
@@ -79,7 +94,9 @@ export function Chat({
           messages.map((m) => <MessageParts key={m.id} message={m} />)
         )}
 
-        {profile ? <ProfileCard profile={profile} /> : null}
+        {mostrarPerfil ? (
+          <ProfileCard profile={profile} onConfirmar={onConfirmarPerfil} />
+        ) : null}
 
         {status === 'submitted' ? <IndicadorPensando /> : null}
         {status === 'error' ? (
@@ -193,20 +210,23 @@ function EstadoVazio({ onSugestao }: { onSugestao: (texto: string) => void }) {
   );
 }
 
-function ProfileCard({ profile }: { profile: BusinessProfile }) {
-  const [estado, setEstado] = React.useState<
-    'idle' | 'enviando' | 'ok' | 'erro'
-  >('idle');
+function ProfileCard({
+  profile,
+  onConfirmar,
+}: {
+  profile: BusinessProfile;
+  onConfirmar?: (profile: BusinessProfile) => Promise<void> | void;
+}) {
+  const [estado, setEstado] = React.useState<'idle' | 'enviando' | 'erro'>(
+    'idle',
+  );
 
   async function confirmar() {
     setEstado('enviando');
     try {
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile, verified: true }),
-      });
-      setEstado(res.ok ? 'ok' : 'erro');
+      await onConfirmar?.(profile);
+      // Em caso de sucesso o perfil vira "verificado" e este card desmonta;
+      // não precisamos de um estado "ok" — o card simplesmente desaparece.
     } catch {
       setEstado('erro');
     }
@@ -218,29 +238,15 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
         <CardTitle>Perfil do Negócio</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <Campo rotulo="Nome" valor={profile.nomeNegocio} />
-        <Campo rotulo="Setor" valor={profile.setor} />
-        <Campo rotulo="Produto / serviço" valor={profile.produtoServico} />
-        <Campo rotulo="Público-alvo" valor={profile.publicoAlvo} />
-        {profile.regiao ? <Campo rotulo="Região" valor={profile.regiao} /> : null}
-        {profile.ticketMedio ? (
-          <Campo rotulo="Ticket médio" valor={profile.ticketMedio} />
-        ) : null}
-        <CampoLista rotulo="Canais atuais" itens={profile.canaisAtuais} />
-        <CampoLista rotulo="Principais dores" itens={profile.principaisDores} />
-        <CampoLista rotulo="Diferenciais" itens={profile.diferenciais} />
-        <CampoLista rotulo="Objetivos" itens={profile.objetivos} />
+        <ProfileFields profile={profile} />
 
         <div className="flex items-center gap-3 pt-1">
           <Button
             onClick={() => void confirmar()}
-            disabled={estado === 'enviando' || estado === 'ok'}
+            disabled={estado === 'enviando'}
           >
-            {estado === 'ok' ? 'Perfil confirmado' : 'Confirmar perfil'}
+            {estado === 'enviando' ? 'Salvando…' : 'Confirmar perfil'}
           </Button>
-          {estado === 'enviando' ? (
-            <span className="text-xs text-muted-foreground">Salvando…</span>
-          ) : null}
           {estado === 'erro' ? (
             <span className="text-xs text-destructive">
               Não foi possível salvar. Tente de novo.
@@ -249,33 +255,6 @@ function ProfileCard({ profile }: { profile: BusinessProfile }) {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {rotulo}
-      </p>
-      <p className="text-foreground">{valor}</p>
-    </div>
-  );
-}
-
-function CampoLista({ rotulo, itens }: { rotulo: string; itens: string[] }) {
-  if (!itens || itens.length === 0) return null;
-  return (
-    <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {rotulo}
-      </p>
-      <ul className="ml-4 list-disc text-foreground">
-        {itens.map((it, i) => (
-          <li key={i}>{it}</li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

@@ -3,13 +3,15 @@
 import * as React from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
-import { MessagesSquare, Sparkles, Users } from 'lucide-react';
+import { Brain, MessagesSquare, Sparkles, Users } from 'lucide-react';
 import { FileText } from 'lucide-react';
 import type { PersonaId } from '@/src/domain/persona';
+import type { BusinessProfile } from '@/src/domain/business-profile';
 import { Chat } from '@/components/chat/chat';
 import { TeamPanel, type ActiveRun } from '@/components/team/team-panel';
 import { ArtifactsPanel } from '@/components/artifacts/artifacts-panel';
 import { DeliverablesPanel } from '@/components/deliverables/deliverables-panel';
+import { MemoriesPanel } from '@/components/memories/memories-panel';
 import {
   ConversationList,
   type Conversa,
@@ -42,6 +44,8 @@ export function Console() {
     refresh: refreshConversas,
     setConversas,
   } = useConversas();
+
+  const perfil = usePerfilNegocio();
 
   const [carregandoHistorico, setCarregandoHistorico] = React.useState(true);
 
@@ -103,14 +107,17 @@ export function Console() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregandoConversas]);
 
-  // Quando uma resposta termina, atualiza a lista (título auto + ordem).
+  // Quando uma resposta termina, atualiza a lista (título auto + ordem) e
+  // re-busca o perfil — o CEO pode ter chamado salvarPerfil no meio da resposta
+  // (perfil volta a "não verificado" e o card de confirmação reaparece no chat).
   const statusAnterior = React.useRef(status);
   React.useEffect(() => {
     if (statusAnterior.current !== 'ready' && status === 'ready') {
       void refreshConversas();
+      void perfil.refresh();
     }
     statusAnterior.current = status;
-  }, [status, refreshConversas]);
+  }, [status, refreshConversas, perfil]);
 
   const renomear = React.useCallback(
     async (id: string, titulo: string) => {
@@ -158,7 +165,7 @@ export function Console() {
   // Visão principal: o chat (com a sidebar de conversas/time) ou uma página
   // full-width de Entregáveis/Artefatos — mais larga e fácil de ler.
   const [mainView, setMainView] = React.useState<
-    'chat' | 'entregaveis' | 'artefatos'
+    'chat' | 'entregaveis' | 'artefatos' | 'memorias'
   >('chat');
 
   return (
@@ -174,6 +181,8 @@ export function Console() {
               sendMessage={sendMessage}
               status={status}
               carregandoHistorico={carregandoHistorico}
+              perfilVerificado={perfil.verified}
+              onConfirmarPerfil={perfil.confirmar}
             />
           </section>
 
@@ -214,13 +223,20 @@ export function Console() {
           </aside>
         </div>
       ) : (
-        // Página full-width (Entregáveis ou Artefatos), em coluna legível.
+        // Página full-width (Entregáveis, Artefatos ou Memórias), em coluna legível.
         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
           <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
             {mainView === 'entregaveis' ? (
               <DeliverablesPanel />
-            ) : (
+            ) : mainView === 'artefatos' ? (
               <ArtifactsPanel />
+            ) : (
+              <MemoriesPanel
+                profile={perfil.profile}
+                verified={perfil.verified}
+                carregando={perfil.carregando}
+                onConfirmar={perfil.confirmar}
+              />
             )}
           </div>
         </section>
@@ -231,18 +247,19 @@ export function Console() {
   );
 }
 
-/** Seletor da visão principal: Chat · Entregáveis · Artefatos. */
+/** Seletor da visão principal: Chat · Entregáveis · Artefatos · Memórias. */
 function ViewSwitcher({
   view,
   onChange,
 }: {
-  view: 'chat' | 'entregaveis' | 'artefatos';
-  onChange: (v: 'chat' | 'entregaveis' | 'artefatos') => void;
+  view: 'chat' | 'entregaveis' | 'artefatos' | 'memorias';
+  onChange: (v: 'chat' | 'entregaveis' | 'artefatos' | 'memorias') => void;
 }) {
   const itens = [
     { id: 'chat' as const, label: 'Chat', Icon: MessagesSquare },
     { id: 'entregaveis' as const, label: 'Entregáveis', Icon: FileText },
     { id: 'artefatos' as const, label: 'Artefatos', Icon: Sparkles },
+    { id: 'memorias' as const, label: 'Memórias', Icon: Brain },
   ];
   return (
     <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
@@ -290,6 +307,56 @@ function useConversas() {
   }, [refresh]);
 
   return { conversas, carregando, refresh, setConversas };
+}
+
+/**
+ * Estado do Perfil do Negócio (a "memória" do negócio): conteúdo + se já foi
+ * verificado pelo dono. É a fonte única que decide se o card de confirmação
+ * aparece no chat e o que a aba "Memórias" exibe.
+ */
+function usePerfilNegocio() {
+  const [profile, setProfile] = React.useState<BusinessProfile | null>(null);
+  const [verified, setVerified] = React.useState<boolean | null>(null);
+  const [carregando, setCarregando] = React.useState(true);
+
+  const refresh = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/profile');
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        profile?: BusinessProfile | null;
+        verified?: boolean;
+      };
+      setProfile(data.profile ?? null);
+      setVerified(data.verified ?? false);
+    } catch {
+      // silencioso
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Confirma o perfil: marca como verificado (otimista) e persiste.
+  const confirmar = React.useCallback(async (p: BusinessProfile) => {
+    setProfile(p);
+    setVerified(true);
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile: p, verified: true }),
+    });
+    if (!res.ok) {
+      // Reverte o otimismo para o usuário poder tentar de novo.
+      setVerified(false);
+      throw new Error('Falha ao confirmar o perfil');
+    }
+  }, []);
+
+  return { profile, verified, carregando, refresh, confirmar };
 }
 
 /**
