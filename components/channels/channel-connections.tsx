@@ -147,6 +147,15 @@ export function ChannelConnections({
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate text-sm text-foreground">{c.nomeExibicao}</span>
+                      {c.provider === 'evolution' ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px]"
+                          title="WhatsApp não-oficial via Evolution API"
+                        >
+                          Evolution
+                        </Badge>
+                      ) : null}
                       {c.coexistence ? (
                         <Badge
                           variant="outline"
