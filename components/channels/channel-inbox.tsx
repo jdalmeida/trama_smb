@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Inbox, Lock, MessageSquarePlus } from 'lucide-react';
+import { Inbox, MessageSquarePlus, Send, Sparkles } from 'lucide-react';
 import type {
   ChannelMessageDTO,
   ConversationDTO,
@@ -9,6 +9,7 @@ import type {
 } from '@/src/domain/channels';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
 import { PlatformBadge } from '@/components/channels/platform';
 import { cn } from '@/lib/utils';
@@ -30,10 +31,16 @@ export function ChannelInbox({
     conversa: ConversationDTO;
     mensagens: ChannelMessageDTO[];
   } | null>(null);
+  const [texto, setTexto] = React.useState('');
+  const [enviando, setEnviando] = React.useState(false);
+  const [rascunhando, setRascunhando] = React.useState(false);
 
   const abrir = React.useCallback(
     async (id: string) => {
-      setAtivaId(id);
+      setAtivaId((prev) => {
+        if (prev !== id) setTexto(''); // troca de conversa zera o rascunho
+        return id;
+      });
       try {
         const res = await fetch(`/api/channels/conversations/${id}`);
         if (!res.ok) return;
@@ -50,6 +57,54 @@ export function ChannelInbox({
     [onRefresh],
   );
 
+  async function enviar() {
+    if (!thread || !texto.trim() || enviando) return;
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/channels/conversations/${thread.conversa.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: texto.trim() }),
+      });
+      if (!res.ok) {
+        const e = (await res.json().catch(() => null)) as { erro?: string } | null;
+        throw new Error(e?.erro);
+      }
+      setTexto('');
+      await abrir(thread.conversa.id);
+    } catch (err) {
+      toast({
+        title:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Não foi possível enviar a mensagem',
+      });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  // Rascunho assistido por IA: usa o texto digitado (se houver) como orientação.
+  // A IA só sugere — o dono revisa e envia (guardrail).
+  async function rascunhar() {
+    if (!thread || rascunhando) return;
+    setRascunhando(true);
+    try {
+      const res = await fetch(`/api/channels/conversations/${thread.conversa.id}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instrucao: texto.trim() || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { rascunho?: string };
+      if (data.rascunho) setTexto(data.rascunho);
+    } catch {
+      toast({ title: 'Não foi possível gerar o rascunho' });
+    } finally {
+      setRascunhando(false);
+    }
+  }
+
   async function simularMensagem() {
     const texto = prompt('Mensagem do lead (teste):');
     if (!texto || !texto.trim()) return;
@@ -64,32 +119,6 @@ export function ChannelInbox({
       toast({ variant: 'success', title: 'Mensagem de teste recebida' });
     } catch {
       toast({ title: 'Não foi possível simular a mensagem' });
-    }
-  }
-
-  // Coexistência: simula o dono respondendo pelo app WhatsApp Business (echo).
-  // A mensagem cai na conversa aberta como saída (bolha à direita).
-  async function simularEcho() {
-    if (!thread) return;
-    const texto = prompt('Resposta enviada pelo seu celular (app WhatsApp Business):');
-    if (!texto || !texto.trim()) return;
-    try {
-      const res = await fetch('/api/channels/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: thread.conversa.platform,
-          externalUserId: thread.conversa.externalUserId,
-          de: thread.conversa.nomeContato ?? 'Lead de teste',
-          texto: texto.trim(),
-          direction: 'saida',
-        }),
-      });
-      if (!res.ok) throw new Error();
-      await abrir(thread.conversa.id);
-      toast({ variant: 'success', title: 'Echo de coexistência registrado' });
-    } catch {
-      toast({ title: 'Não foi possível simular o echo' });
     }
   }
 
@@ -196,23 +225,48 @@ export function ChannelInbox({
               ))}
             </div>
 
-            {/* Composer desabilitado — envio chega na próxima leva. */}
-            <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Lock className="size-3.5" aria-hidden />
-                O envio (com rascunho da IA) chega na próxima leva. Por ora, a caixa de entrada é
-                só de leitura.
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 shrink-0 gap-1.5 text-xs"
-                onClick={() => void simularEcho()}
-                title="Simula uma resposta enviada pelo app WhatsApp Business (coexistência)"
-              >
-                <MessageSquarePlus className="size-3.5" aria-hidden />
-                Simular envio pelo app
-              </Button>
+            {/* Composer: rascunho da IA + envio manual pela plataforma. */}
+            <div className="flex flex-col gap-2 border-t border-border px-3 py-3">
+              <Textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void enviar();
+                  }
+                }}
+                placeholder="Escreva uma mensagem…  (Enter envia, Shift+Enter quebra linha)"
+                rows={2}
+                disabled={enviando}
+                className="min-h-0 resize-none text-sm"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => void rascunhar()}
+                  disabled={rascunhando || enviando}
+                  title="A IA sugere uma resposta com base no perfil do negócio e na conversa"
+                >
+                  <Sparkles className="size-3.5" aria-hidden />
+                  {rascunhando ? 'Rascunhando…' : 'Rascunhar com IA'}
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => void enviar()}
+                  disabled={!texto.trim() || enviando}
+                >
+                  <Send className="size-3.5" aria-hidden />
+                  {enviando ? 'Enviando…' : 'Enviar'}
+                </Button>
+              </div>
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Sparkles className="size-3 shrink-0" aria-hidden />
+                A IA sugere; você revisa e envia. O contato é sempre conduzido por você.
+              </p>
             </div>
           </>
         ) : (
