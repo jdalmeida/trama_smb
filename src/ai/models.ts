@@ -5,7 +5,7 @@
 export const MODELS = {
   // Raciocínio / orquestração (CEO) e personas.
   reasoning: "google/gemini-3.5-flash",
-  worker: "moonshotai/kimi-k2.6",
+  worker: "zai/glm-5.2",
   // Tarefas simples / extração estruturada barata.
   cheap: "openai/gpt-4o-mini",
 } as const;
