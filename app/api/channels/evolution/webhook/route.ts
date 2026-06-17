@@ -23,11 +23,19 @@ export async function POST(req: Request) {
   }
 
   const mensagens = normalizarEvolution(payload);
+  console.log('[webhook/evolution] recebido', {
+    event: (payload as { event?: string })?.event ?? null,
+    instance: (payload as { instance?: string })?.instance ?? null,
+    mensagens: mensagens.length,
+  });
   for (const m of mensagens) {
     try {
       await ingestMensagem(m);
-    } catch {
-      // segue para a próxima
+    } catch (err) {
+      console.error('[webhook/evolution] falha ao ingerir mensagem', {
+        connectionExternalId: m.connectionExternalId,
+        erro: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

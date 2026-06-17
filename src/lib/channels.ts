@@ -386,7 +386,16 @@ export async function ingestMensagem(
       ),
     )
     .limit(1);
-  if (!conexao[0]) return null;
+  if (!conexao[0]) {
+    // Silenciar isto escondia a causa nº 1 de "não cria conversa": o id externo
+    // da conta no webhook não bate com nenhuma conexão salva.
+    console.warn('[ingestMensagem] conexão não encontrada — mensagem ignorada', {
+      platform: msg.platform,
+      connectionExternalId: msg.connectionExternalId,
+      direction: msg.direction,
+    });
+    return null;
+  }
   const { id: connectionId, businessId } = conexao[0];
 
   // Dedupe: se a mensagem já foi gravada (reentrega do webhook), ignora.
@@ -516,6 +525,12 @@ async function upsertConversa(
       nomeContato: msg.nomeContato,
     })
     .returning({ id: channelConversations.id });
+  console.log('[ingestMensagem] conversa criada', {
+    conversationId: row.id,
+    platform: msg.platform,
+    externalUserId: msg.externalUserId,
+    direction: msg.direction,
+  });
   return row.id;
 }
 

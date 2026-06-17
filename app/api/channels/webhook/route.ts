@@ -46,12 +46,21 @@ export async function POST(req: Request) {
   }
 
   const { mensagens, contatos } = normalizarWebhook(payload);
+  console.log('[webhook/meta] recebido', {
+    object: (payload as { object?: string })?.object ?? null,
+    mensagens: mensagens.length,
+    contatos: contatos.length,
+  });
   // Processa em sequência; falhas individuais não derrubam o lote.
   for (const m of mensagens) {
     try {
       await ingestMensagem(m);
-    } catch {
-      // segue para a próxima
+    } catch (err) {
+      console.error('[webhook/meta] falha ao ingerir mensagem', {
+        platform: m.platform,
+        connectionExternalId: m.connectionExternalId,
+        erro: err instanceof Error ? err.message : String(err),
+      });
     }
   }
   // Coexistência: sincroniza nomes de contatos vindos do app (smb_app_state_sync).
