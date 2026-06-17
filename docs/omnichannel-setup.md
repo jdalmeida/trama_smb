@@ -8,14 +8,19 @@ for Business** + **Webhooks** da Graph API.
 > (contas e mensagens de teste) — útil para validar a caixa de entrada antes de
 > ter o app aprovado. Este documento é só para o modo real.
 
-## Visão geral do que esta leva faz
+## Visão geral do que a integração faz
 
-- **Recebe** mensagens dos 3 canais num inbox unificado read-only.
+- **Recebe** mensagens dos 3 canais num inbox unificado.
 - O **login** do dono é via OAuth da Meta (descobre Páginas, contas IG e números WhatsApp).
 - O **roteamento** do webhook ao negócio certo usa o id externo da conta
   (`phone_number_id` no WhatsApp, `page_id` no Messenger, `ig_id` no Instagram).
+- **Envia** mensagens de texto pela própria plataforma, roteando pelo provedor da
+  conexão (Cloud API / Send API da Meta, ou Evolution API) — ver seção 7.
+- **Rascunha com IA**: o dono pede uma sugestão de resposta (perfil do negócio +
+  histórico da conversa), revisa, edita e envia — ver seção 7.
 
-O **envio** de mensagens e o **rascunho assistido por IA** ficam para as próximas levas.
+> Guardrail (LGPD/CDC): o contato é sempre conduzido pelo dono. A IA só sugere o
+> rascunho; nada de outreach automatizado em massa.
 
 ## 1. Criar o Meta App
 
@@ -189,8 +194,36 @@ pnpm db:push
 ```
 (O projeto não usa migrações versionadas — ver o roadmap do CRM.)
 
+## 7. Enviar mensagens e rascunho com IA
+
+Na **Caixa de entrada**, ao abrir uma conversa, o dono tem um campo de resposta
+com dois botões:
+
+- **Enviar** — manda o texto pelo provedor da conexão:
+  - WhatsApp via **Cloud API** → `POST /{phone_number_id}/messages` (texto livre
+    dentro da janela de 24h; **fora dela a Meta exige um template aprovado**, não
+    coberto aqui);
+  - WhatsApp via **Evolution API** → `POST /message/sendText/{instance}` (não há
+    janela de 24h, mas vale o aviso de risco de banimento da seção 4.3);
+  - Messenger/Instagram via **Send API** → `POST /{page_id|ig_id}/messages`
+    (`messaging_type: RESPONSE`, dentro da janela de atendimento).
+- **Rascunhar com IA** — gera uma sugestão de resposta a partir do **Perfil do
+  Negócio** + histórico recente da conversa. O texto cai no campo para o dono
+  **revisar, editar e enviar**. Se já houver algo digitado, ele vira a orientação
+  do rascunho (ex.: "ofereça frete grátis").
+
+A mensagem enviada é gravada como **saída** usando o id devolvido pela plataforma;
+quando o mesmo texto volta como *echo* (coexistência), o dedupe evita duplicar a
+bolha. Em conexões de **teste**, o envio apenas registra a mensagem (sem chamada
+externa), útil para validar a UI.
+
+> **Guardrail:** a IA só rascunha. O envio é sempre uma ação manual do dono — sem
+> disparo automatizado em massa, coerente com o agente de prospecção.
+
 ## Testar sem Meta (simulação)
 
 Na aba **Canais → Conexões**, clique em **Conta de teste** de qualquer plataforma.
 Depois, em **Caixa de entrada → Simular**, injete uma mensagem. Ela percorre o
-mesmo caminho do webhook real (normalização → ingest) e aparece no inbox.
+mesmo caminho do webhook real (normalização → ingest) e aparece no inbox. Em
+seguida, escreva uma resposta no campo (ou use **Rascunhar com IA**) e clique em
+**Enviar** — em conta de teste a saída é só registrada, exercitando o composer.
