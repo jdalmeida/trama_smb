@@ -139,6 +139,24 @@ export async function estadoConexao(instanceName: string): Promise<string> {
   return data.instance?.state ?? data.state ?? 'close';
 }
 
+/**
+ * Envia uma mensagem de texto pela instância (POST /message/sendText/{instance}).
+ * `numero` é o telefone do destinatário (só dígitos, com DDI). Retorna o id da
+ * mensagem (key.id) para dedupe com o echo que a própria Evolution reentrega no
+ * webhook (messages.upsert com fromMe=true).
+ */
+export async function enviarTexto(
+  instanceName: string,
+  numero: string,
+  texto: string,
+): Promise<string | null> {
+  const data = (await evoFetch(`/message/sendText/${encodeURIComponent(instanceName)}`, {
+    method: 'POST',
+    body: JSON.stringify({ number: numero, text: texto }),
+  })) as { key?: { id?: string }; messageId?: string };
+  return data.key?.id ?? data.messageId ?? null;
+}
+
 /* ------------------------------------------------------------------ *
  * Normalização do webhook
  * ------------------------------------------------------------------ */

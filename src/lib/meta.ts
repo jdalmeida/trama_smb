@@ -325,6 +325,55 @@ export async function trocarCodeEmbedded(code: string): Promise<string> {
 }
 
 /* ------------------------------------------------------------------ *
+ * Envio de mensagens (Cloud API / Send API)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Envia uma mensagem de texto pelo WhatsApp Cloud API
+ * (POST /{phone-number-id}/messages). Retorna o `wamid` da mensagem — usado para
+ * dedupe com o echo (`smb_message_echoes`) que volta no webhook.
+ *
+ * Observação: fora da janela de 24h de atendimento, a Meta exige um template
+ * aprovado (não cobrimos aqui). Como resposta a um lead que escreveu, é sessão
+ * normal de texto livre.
+ */
+export async function enviarTextoWhatsApp(
+  phoneNumberId: string,
+  token: string,
+  to: string,
+  texto: string,
+): Promise<string | null> {
+  const data = (await postJson(`${GRAPH}/${phoneNumberId}/messages`, token, {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'text',
+    text: { body: texto, preview_url: true },
+  })) as { messages?: Array<{ id?: string }> };
+  return data.messages?.[0]?.id ?? null;
+}
+
+/**
+ * Envia uma mensagem de texto pelo Messenger ou Instagram (Send API:
+ * POST /{page-id|ig-id}/messages). Retorna o `message_id` (mid) para dedupe com
+ * o echo (`is_echo`) que volta no webhook. `messaging_type: RESPONSE` é o modo
+ * de resposta dentro da janela padrão de atendimento.
+ */
+export async function enviarTextoMessaging(
+  contaId: string,
+  token: string,
+  recipientId: string,
+  texto: string,
+): Promise<string | null> {
+  const data = (await postJson(`${GRAPH}/${contaId}/messages`, token, {
+    recipient: { id: recipientId },
+    messaging_type: 'RESPONSE',
+    message: { text: texto },
+  })) as { message_id?: string };
+  return data.message_id ?? null;
+}
+
+/* ------------------------------------------------------------------ *
  * Webhook
  * ------------------------------------------------------------------ */
 
@@ -347,6 +396,26 @@ export function verificarAssinatura(rawBody: string, header: string | null): boo
 
 async function getJson(url: string): Promise<unknown> {
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const json = (await res.json().catch(() => null)) as
+    | { error?: { message?: string } }
+    | null;
+  if (!res.ok) {
+    const msg = json?.error?.message || `Graph API respondeu ${res.status}`;
+    throw new Error(msg);
+  }
+  return json;
+}
+
+/** POST autenticado por Bearer na Graph API, com erro amigável. */
+async function postJson(url: string, token: string, body: unknown): Promise<unknown> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
   const json = (await res.json().catch(() => null)) as
     | { error?: { message?: string } }
     | null;

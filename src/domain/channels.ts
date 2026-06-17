@@ -172,6 +172,21 @@ export const SimularMensagemSchema = z.object({
 });
 export type SimularMensagemInput = z.infer<typeof SimularMensagemSchema>;
 
+/** Corpo do envio manual de uma mensagem de texto pela plataforma. */
+export const EnviarMensagemSchema = z.object({
+  texto: z.string().min(1).max(4096),
+});
+export type EnviarMensagemInput = z.infer<typeof EnviarMensagemSchema>;
+
+/**
+ * Corpo (opcional) do rascunho assistido por IA. `instrucao` deixa o dono
+ * orientar o tom/conteúdo da sugestão (ex.: "ofereça 10% de desconto").
+ */
+export const RascunharSchema = z.object({
+  instrucao: z.string().max(500).optional(),
+});
+export type RascunharInput = z.infer<typeof RascunharSchema>;
+
 /* ------------------------------------------------------------------ *
  * Normalização de webhooks
  *
