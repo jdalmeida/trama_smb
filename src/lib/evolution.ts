@@ -230,8 +230,17 @@ export function normalizarEvolution(payload: unknown): NormalizedMessage[] {
     const remoteJid = typeof key.remoteJid === 'string' ? key.remoteJid : '';
     const id = typeof key.id === 'string' ? key.id : '';
     if (!remoteJid || !id) continue;
-    // Só conversas individuais (ignora grupos, broadcast e status).
-    if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
+    // Ignora apenas o que NÃO é conversa 1:1: grupos (@g.us), listas de
+    // transmissão/status (@broadcast) e canais (@newsletter). Aceita tanto
+    // @s.whatsapp.net quanto @lid — o WhatsApp passou a entregar conversas
+    // individuais com JID @lid, e o whitelist antigo as descartava em silêncio.
+    if (
+      remoteJid.endsWith('@g.us') ||
+      remoteJid.endsWith('@broadcast') ||
+      remoteJid.endsWith('@newsletter')
+    ) {
+      continue;
+    }
 
     const externalUserId = remoteJid.split('@')[0].replace(/\D/g, '');
     if (!externalUserId) continue;
