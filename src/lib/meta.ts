@@ -270,6 +270,61 @@ async function descobrirWhatsApp(token: string, out: ContaDescoberta[]): Promise
 }
 
 /* ------------------------------------------------------------------ *
+ * WhatsApp — conexão direta (sem Embedded Signup) e Embedded Signup
+ * ------------------------------------------------------------------ */
+
+/** Lê os dados de um número do WhatsApp (valida o par phone_number_id + token). */
+export async function verificarNumeroWhatsApp(
+  phoneNumberId: string,
+  token: string,
+): Promise<{ displayPhoneNumber: string | null; verifiedName: string | null }> {
+  const url = new URL(`${GRAPH}/${phoneNumberId}`);
+  url.searchParams.set('fields', 'display_phone_number,verified_name');
+  url.searchParams.set('access_token', token);
+  const data = (await getJson(url.toString())) as {
+    display_phone_number?: string;
+    verified_name?: string;
+  };
+  return {
+    displayPhoneNumber: data.display_phone_number ?? null,
+    verifiedName: data.verified_name ?? null,
+  };
+}
+
+/**
+ * Assina este app na WABA para receber os webhooks daquele número
+ * (POST /{waba-id}/subscribed_apps). Idempotente do lado da Meta.
+ */
+export async function assinarAppNaWaba(wabaId: string, token: string): Promise<void> {
+  const res = await fetch(`${GRAPH}/${wabaId}/subscribed_apps`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => null)) as
+      | { error?: { message?: string } }
+      | null;
+    throw new Error(json?.error?.message || `Falha ao assinar a WABA (${res.status})`);
+  }
+}
+
+/**
+ * Troca o `code` retornado pelo Embedded Signup (fluxo JS, sem redirect_uri)
+ * por um token de integração do negócio. Diferente do OAuth por redirect, aqui
+ * NÃO se envia redirect_uri.
+ */
+export async function trocarCodeEmbedded(code: string): Promise<string> {
+  if (!metaConfigurado()) throw new Error('Integração Meta não configurada.');
+  const url = new URL(`${GRAPH}/oauth/access_token`);
+  url.searchParams.set('client_id', appId()!);
+  url.searchParams.set('client_secret', appSecret()!);
+  url.searchParams.set('code', code);
+  const data = (await getJson(url.toString())) as { access_token?: string };
+  if (!data.access_token) throw new Error('Falha ao obter token do Embedded Signup.');
+  return data.access_token;
+}
+
+/* ------------------------------------------------------------------ *
  * Webhook
  * ------------------------------------------------------------------ */
 
