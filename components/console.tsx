@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
-import { Brain, KanbanSquare, MessagesSquare, Sparkles, Users } from 'lucide-react';
+import { Brain, KanbanSquare, MessagesSquare, Radio, Sparkles, Users } from 'lucide-react';
 import { FileText } from 'lucide-react';
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import type { BusinessProfile } from '@/src/domain/business-profile';
@@ -13,6 +13,7 @@ import { ArtifactsPanel } from '@/components/artifacts/artifacts-panel';
 import { DeliverablesPanel } from '@/components/deliverables/deliverables-panel';
 import { MemoriesPanel } from '@/components/memories/memories-panel';
 import { CrmPanel } from '@/components/crm/crm-panel';
+import { ChannelsPanel } from '@/components/channels/channels-panel';
 import {
   ConversationList,
   type Conversa,
@@ -22,7 +23,7 @@ import { Toaster } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
 /** Visões principais do console (seletor no topo). */
-type MainView = 'chat' | 'entregaveis' | 'artefatos' | 'memorias' | 'crm';
+type MainView = 'chat' | 'canais' | 'entregaveis' | 'artefatos' | 'memorias' | 'crm';
 
 export function Console() {
   // Conversa ativa: um ref (lido pelo transport) + um state (dispara render).
@@ -229,6 +230,11 @@ export function Console() {
         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
           <CrmPanel />
         </section>
+      ) : mainView === 'canais' ? (
+        // Canais: full-width (inbox + thread precisam de espaço horizontal).
+        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
+          <ChannelsPanel />
+        </section>
       ) : (
         // Página full-width (Entregáveis, Artefatos ou Memórias), em coluna legível.
         <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
@@ -264,6 +270,7 @@ function ViewSwitcher({
 }) {
   const itens = [
     { id: 'chat' as const, label: 'Chat', Icon: MessagesSquare },
+    { id: 'canais' as const, label: 'Canais', Icon: Radio },
     { id: 'crm' as const, label: 'CRM', Icon: KanbanSquare },
     { id: 'entregaveis' as const, label: 'Entregáveis', Icon: FileText },
     { id: 'artefatos' as const, label: 'Artefatos', Icon: Sparkles },

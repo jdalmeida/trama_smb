@@ -1,12 +1,15 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Rotas públicas: auth e os endpoints internos do Workflow DevKit
-// (/.well-known/workflow/* são chamados pela infra, sem sessão de usuário).
+// Rotas públicas: auth, os endpoints internos do Workflow DevKit
+// (/.well-known/workflow/* são chamados pela infra, sem sessão de usuário) e o
+// webhook da Meta (a Meta entrega eventos sem sessão; o negócio é resolvido
+// pelo id externo da conta dentro do handler).
 const isPublic = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/.well-known/workflow(.*)',
+  '/api/channels/webhook(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

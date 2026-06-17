@@ -27,6 +27,15 @@ import type {
   CrmTrigger,
 } from '@/src/domain/crm-automation';
 import type { CrmActivityTipo } from '@/src/domain/crm-activity';
+import type {
+  ChannelAnexo,
+  ChannelConnectionStatus,
+  ChannelPlatform,
+  ConversationStatus,
+  MessageDirection,
+  MessageStatus,
+  MessageType,
+} from '@/src/domain/channels';
 
 /** Um negócio pertence a um usuário do Clerk (escopo de tenancy do MVP). */
 export const businesses = pgTable(
@@ -430,5 +439,131 @@ export const crmActivities = pgTable(
     index('crm_activities_business_idx').on(t.businessId),
     index('crm_activities_card_idx').on(t.cardId),
     index('crm_activities_inicio_idx').on(t.inicioEm),
+  ],
+);
+
+/* ================================================================== *
+ * Omnichannel (Meta: WhatsApp, Instagram DM, Messenger)
+ *
+ * Leva 1 (fundação): o dono conecta suas contas e o app RECEBE as conversas
+ * num inbox unificado read-only. Tudo escopado por businessId (mesmo tenancy).
+ * Envio e disparo assistido por IA ficam para as próximas levas.
+ * ================================================================== */
+
+/**
+ * Conta conectada de uma plataforma. Para WhatsApp Cloud API a unidade é um
+ * número (phone_number_id dentro de uma WABA); para Messenger é uma Página
+ * (page_id) e para Instagram a conta profissional vinculada (ig_id). O
+ * `externalId` é a chave que o webhook usa para rotear o evento de volta ao
+ * negócio certo, por isso é indexado junto da plataforma.
+ */
+export const channelConnections = pgTable(
+  'channel_connections',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    platform: varchar('platform', { length: 16 }).$type<ChannelPlatform>().notNull(),
+    status: varchar('status', { length: 16 })
+      .$type<ChannelConnectionStatus>()
+      .notNull()
+      .default('conectado'),
+    /** Nome amigável: número do WhatsApp, nome da Página ou @ do Instagram. */
+    nomeExibicao: text('nome_exibicao').notNull(),
+    /** phone_number_id (WhatsApp) | page_id (Messenger) | ig_id (Instagram). */
+    externalId: text('external_id').notNull(),
+    /** Token de acesso da Meta para esta conta. */
+    accessToken: text('access_token'),
+    tokenExpiraEm: timestamp('token_expira_em', { withTimezone: true }),
+    /** Dados extras da Meta (waba_id, business id, scopes, etc.). */
+    meta: jsonb('meta').$type<Record<string, unknown>>().notNull().default({}),
+    /** Conexão criada pelo modo de simulação (sem Meta real). */
+    simulada: boolean('simulada').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('channel_connections_business_idx').on(t.businessId),
+    // Roteamento do webhook: acha a conexão por (plataforma, id externo).
+    index('channel_connections_external_idx').on(t.platform, t.externalId),
+  ],
+);
+
+/**
+ * Conversa (thread) com um interlocutor externo numa conexão. `externalUserId`
+ * é o telefone E.164 (WhatsApp), PSID (Messenger) ou IGSID (Instagram). Pode
+ * ser vinculada (opcionalmente) a um contato/card do CRM.
+ */
+export const channelConversations = pgTable(
+  'channel_conversations',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    connectionId: uuid('connection_id')
+      .notNull()
+      .references(() => channelConnections.id, { onDelete: 'cascade' }),
+    /** Denormalizado da conexão para facilitar a montagem do inbox. */
+    platform: varchar('platform', { length: 16 }).$type<ChannelPlatform>().notNull(),
+    externalUserId: text('external_user_id').notNull(),
+    nomeContato: text('nome_contato'),
+    contatoId: uuid('contato_id').references(() => crmContacts.id, {
+      onDelete: 'set null',
+    }),
+    cardId: uuid('card_id').references(() => crmCards.id, { onDelete: 'set null' }),
+    status: varchar('status', { length: 16 })
+      .$type<ConversationStatus>()
+      .notNull()
+      .default('aberta'),
+    naoLidas: integer('nao_lidas').notNull().default(0),
+    ultimaPrevia: text('ultima_previa'),
+    ultimaMensagemEm: timestamp('ultima_mensagem_em', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('channel_conversations_business_idx').on(t.businessId),
+    index('channel_conversations_connection_idx').on(t.connectionId),
+    index('channel_conversations_ultima_idx').on(t.ultimaMensagemEm),
+    // Dedupe de thread: uma conversa por interlocutor dentro de uma conexão.
+    index('channel_conversations_dedupe_idx').on(t.connectionId, t.externalUserId),
+  ],
+);
+
+/**
+ * Mensagem de uma conversa. `direction` separa o que o lead mandou (entrada) do
+ * que o dono enviar (saida, próxima leva). `externalMessageId` é o id da
+ * mensagem na plataforma — usado para ignorar reentregas do webhook (dedupe
+ * idempotente).
+ */
+export const channelMessages = pgTable(
+  'channel_messages',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => channelConversations.id, { onDelete: 'cascade' }),
+    direction: varchar('direction', { length: 8 })
+      .$type<MessageDirection>()
+      .notNull(),
+    tipo: varchar('tipo', { length: 16 }).$type<MessageType>().notNull().default('texto'),
+    texto: text('texto'),
+    anexos: jsonb('anexos').$type<ChannelAnexo[]>().notNull().default([]),
+    /** Só para mensagens de saída (preparado para a próxima leva). */
+    status: varchar('status', { length: 16 }).$type<MessageStatus>(),
+    /** Id da mensagem na plataforma — dedupe de reentregas do webhook. */
+    externalMessageId: text('external_message_id'),
+    enviadaEm: timestamp('enviada_em', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('channel_messages_business_idx').on(t.businessId),
+    index('channel_messages_conversation_idx').on(t.conversationId),
+    index('channel_messages_external_idx').on(t.externalMessageId),
   ],
 );
