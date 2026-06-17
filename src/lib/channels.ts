@@ -17,7 +17,12 @@ import {
   type SimularMensagemInput,
   CHANNEL_PLATFORM_LABELS,
 } from '@/src/domain/channels';
-import type { ContaDescoberta } from '@/src/lib/meta';
+import {
+  enviarTextoMessaging,
+  enviarTextoWhatsApp,
+  type ContaDescoberta,
+} from '@/src/lib/meta';
+import { enviarTexto as enviarTextoEvolution } from '@/src/lib/evolution';
 
 /**
  * Repositório da integração omnichannel — CRUD e ingest escopados por businessId.
@@ -254,6 +259,97 @@ export async function marcarLida(businessId: string, conversationId: string): Pr
         eq(channelConversations.businessId, businessId),
       ),
     );
+}
+
+/* ------------------------------------------------------------------ *
+ * Envio (dono → interlocutor)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Envia uma mensagem de texto do dono para o interlocutor de uma conversa,
+ * roteando pelo provedor da conexão:
+ *  - simulada  → apenas registra (sem chamada externa);
+ *  - evolution → Evolution API (WhatsApp não-oficial);
+ *  - meta + whatsapp  → Cloud API;
+ *  - meta + messenger/instagram → Send API.
+ *
+ * A saída é persistida pelo MESMO caminho do webhook (ingestMensagem), usando o
+ * id devolvido pela plataforma como `externalMessageId` — assim o echo que volta
+ * (coexistência) é deduplicado em vez de duplicar a bolha.
+ *
+ * Guardrail (LGPD/CDC): o contato é sempre iniciado pelo dono — este envio é uma
+ * ação manual; a IA apenas rascunha (ver src/lib/channel-ai.ts).
+ */
+export async function enviarMensagem(
+  businessId: string,
+  conversationId: string,
+  texto: string,
+): Promise<{ conversationId: string } | null> {
+  const db = getDb();
+  const rows = await db
+    .select({ conv: channelConversations, conn: channelConnections })
+    .from(channelConversations)
+    .innerJoin(
+      channelConnections,
+      eq(channelConversations.connectionId, channelConnections.id),
+    )
+    .where(
+      and(
+        eq(channelConversations.id, conversationId),
+        eq(channelConversations.businessId, businessId),
+      ),
+    )
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) throw new Error('Conversa não encontrada.');
+  const { conv, conn } = row;
+
+  const provider =
+    (conn.meta as Record<string, unknown> | null)?.provider === 'evolution'
+      ? 'evolution'
+      : 'meta';
+
+  let externalMessageId: string | null;
+  if (conn.simulada) {
+    externalMessageId = `sim-out-${randomId()}`;
+  } else if (provider === 'evolution') {
+    externalMessageId = await enviarTextoEvolution(
+      conn.externalId,
+      conv.externalUserId,
+      texto,
+    );
+  } else if (conn.platform === 'whatsapp') {
+    if (!conn.accessToken) throw new Error('Conexão sem token de acesso.');
+    externalMessageId = await enviarTextoWhatsApp(
+      conn.externalId,
+      conn.accessToken,
+      conv.externalUserId,
+      texto,
+    );
+  } else {
+    if (!conn.accessToken) throw new Error('Conexão sem token de acesso.');
+    externalMessageId = await enviarTextoMessaging(
+      conn.externalId,
+      conn.accessToken,
+      conv.externalUserId,
+      texto,
+    );
+  }
+
+  return ingestMensagem({
+    platform: conn.platform,
+    connectionExternalId: conn.externalId,
+    externalUserId: conv.externalUserId,
+    nomeContato: null,
+    externalMessageId: externalMessageId ?? `out-${randomId()}`,
+    tipo: 'texto',
+    texto,
+    anexos: [],
+    enviadaEm: Date.now(),
+    direction: 'saida',
+    historico: false,
+  });
 }
 
 /* ------------------------------------------------------------------ *
