@@ -136,6 +136,44 @@ a WABA e o número, mostra o **QR code** de coexistência e devolve os ids + um
 - as variáveis **`NEXT_PUBLIC_META_APP_ID`** e **`NEXT_PUBLIC_META_LOGIN_CONFIG_ID`**
   (mesmos valores das `META_*`), para o SDK no browser.
 
+## 4.3 Alternativa não-oficial: WhatsApp via Evolution API (QR)
+
+Se você não quer (ou ainda não pode) usar a Cloud API/Tech Provider, dá para
+conectar o WhatsApp **por QR code** usando a **Evolution API** — um servidor
+open-source que mantém a sessão do WhatsApp Web (via Baileys) e expõe REST +
+webhook. O Trama continua **100% na Vercel**: só fala REST e recebe o webhook.
+
+> ⚠️ **Não-oficial** — usa o protocolo do WhatsApp Web. Há **risco de banimento**
+> do número. Use um **número secundário/dedicado** e evite volume alto / mensagens
+> não solicitadas.
+
+### Subir a Evolution API (fora da Vercel)
+A Evolution precisa de um processo **sempre ligado** — rode num container seu
+(Railway, Render, Fly.io ou VPS). Exemplo com Docker:
+
+```bash
+docker run -d --name evolution -p 8080:8080 \
+  -e AUTHENTICATION_API_KEY="uma-chave-forte" \
+  atendai/evolution-api:latest
+```
+
+(Para produção, configure também o banco/persistência conforme a doc da Evolution.)
+
+### Configurar no Trama
+No `.env.local` (e na Vercel):
+```
+EVOLUTION_API_URL=https://sua-evolution.exemplo.com
+EVOLUTION_API_KEY=uma-chave-forte         # a mesma AUTHENTICATION_API_KEY
+EVOLUTION_WEBHOOK_TOKEN=um-token-qualquer  # validamos no webhook
+```
+
+### Parear
+Aba **Canais → Conexões → WhatsApp → Conectar via QR**: o Trama cria a instância
+na Evolution (já apontando o webhook para `/api/channels/evolution/webhook`),
+mostra o **QR code** e faz polling até parear. Abra **WhatsApp → Aparelhos
+conectados → Conectar aparelho** e escaneie. Mensagens que você enviar pelo
+celular chegam como **saída** no inbox (coexistência natural do WhatsApp Web).
+
 ## 5. App Review
 
 Para uso fora dos usuários de teste, a Meta exige **App Review** das permissões

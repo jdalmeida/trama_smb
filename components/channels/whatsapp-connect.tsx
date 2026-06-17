@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plug, KeyRound } from 'lucide-react';
+import { Plug, KeyRound, QrCode, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
@@ -40,6 +40,10 @@ const VERSION = process.env.NEXT_PUBLIC_META_GRAPH_VERSION || 'v21.0';
 export function WhatsAppConnect({ onRefresh }: { onRefresh: () => void }) {
   const [manualAberto, setManualAberto] = React.useState(false);
   const [enviando, setEnviando] = React.useState(false);
+  const [qr, setQr] = React.useState<{ base64: string | null; pairingCode: string | null } | null>(
+    null,
+  );
+  const [abrindoQr, setAbrindoQr] = React.useState(false);
   // Dados capturados do evento WA_EMBEDDED_SIGNUP (chegam antes do callback).
   const sessao = React.useRef<{ phoneNumberId?: string; wabaId?: string }>({});
 
@@ -138,8 +142,62 @@ export function WhatsAppConnect({ onRefresh }: { onRefresh: () => void }) {
     );
   }
 
+  // Evolution API (WhatsApp não-oficial): pede o QR e abre o modal.
+  async function abrirQr() {
+    setAbrindoQr(true);
+    try {
+      const res = await fetch('/api/channels/evolution/connect', { method: 'POST' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d?.erro ?? 'Falha ao iniciar a conexão');
+      }
+      const d = (await res.json()) as {
+        qr?: { base64?: string | null; pairingCode?: string | null };
+      };
+      setQr({ base64: d.qr?.base64 ?? null, pairingCode: d.qr?.pairingCode ?? null });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : 'Não foi possível conectar' });
+    } finally {
+      setAbrindoQr(false);
+    }
+  }
+
+  // Enquanto o modal do QR está aberto, faz polling do pareamento.
+  React.useEffect(() => {
+    if (!qr) return;
+    let vivo = true;
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch('/api/channels/evolution/status');
+        if (!res.ok) return;
+        const d = (await res.json()) as { conectado?: boolean };
+        if (d.conectado && vivo) {
+          setQr(null);
+          toast({ variant: 'success', title: 'WhatsApp conectado via QR' });
+          onRefresh();
+        }
+      } catch {
+        // segue tentando
+      }
+    }, 3000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, [qr, onRefresh]);
+
   return (
     <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        className="gap-1.5"
+        onClick={() => void abrirQr()}
+        disabled={abrindoQr}
+      >
+        <QrCode className="size-3.5" aria-hidden />
+        {abrindoQr ? 'Gerando QR…' : 'Conectar via QR'}
+      </Button>
       <Button
         size="sm"
         variant="outline"
@@ -172,6 +230,38 @@ export function WhatsAppConnect({ onRefresh }: { onRefresh: () => void }) {
             onRefresh();
           }}
         />
+      ) : null}
+
+      {qr ? (
+        <Modal titulo="Conectar WhatsApp por QR (Evolution)" onClose={() => setQr(null)}>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-xs text-muted-foreground">
+              Abra o <strong>WhatsApp → Aparelhos conectados → Conectar aparelho</strong> e
+              escaneie o código abaixo. A janela fecha sozinha quando conectar.
+            </p>
+            {qr.base64 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={qr.base64}
+                alt="QR code para parear o WhatsApp"
+                className="size-56 rounded-lg border border-border bg-white p-2"
+              />
+            ) : (
+              <div className="flex size-56 items-center justify-center rounded-lg border border-dashed border-border">
+                <Loader className="size-6 animate-spin text-muted-foreground" aria-hidden />
+              </div>
+            )}
+            {qr.pairingCode ? (
+              <p className="text-xs text-muted-foreground">
+                Ou use o código de pareamento: <strong>{qr.pairingCode}</strong>
+              </p>
+            ) : null}
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader className="size-3.5 animate-spin" aria-hidden />
+              Aguardando leitura…
+            </span>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );

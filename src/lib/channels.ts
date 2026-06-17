@@ -43,6 +43,10 @@ function toConnection(r: ConnectionRow): ChannelConnectionDTO {
     nomeExibicao: r.nomeExibicao,
     externalId: r.externalId,
     simulada: r.simulada,
+    provider:
+      (r.meta as Record<string, unknown> | null)?.provider === 'evolution'
+        ? 'evolution'
+        : 'meta',
     coexistence: Boolean((r.meta as Record<string, unknown> | null)?.coexistence),
     expiraEm: r.tokenExpiraEm ? r.tokenExpiraEm.toISOString() : null,
     criadoEm: r.createdAt.toISOString(),
