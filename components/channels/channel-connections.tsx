@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/toast';
 import { PLATFORM_UI, PlatformBadge } from '@/components/channels/platform';
+import { WhatsAppConnect } from '@/components/channels/whatsapp-connect';
 
 /**
  * Aba "Conexões": uma seção por plataforma (WhatsApp, Instagram, Messenger) com
@@ -112,16 +113,20 @@ export function ChannelConnections({
                   <FlaskConical className="size-3.5" aria-hidden />
                   Conta de teste
                 </Button>
-                <Button
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={!configurado}
-                  onClick={() => conectar(platform)}
-                  title={configurado ? undefined : 'Configure a integração Meta para conectar'}
-                >
-                  <Plug className="size-3.5" aria-hidden />
-                  Conectar
-                </Button>
+                {platform === 'whatsapp' ? (
+                  <WhatsAppConnect onRefresh={onRefresh} />
+                ) : (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={!configurado}
+                    onClick={() => conectar(platform)}
+                    title={configurado ? undefined : 'Configure a integração Meta para conectar'}
+                  >
+                    <Plug className="size-3.5" aria-hidden />
+                    Conectar
+                  </Button>
+                )}
               </div>
             </div>
 

@@ -108,6 +108,34 @@ meses de conversas 1:1 e ~2 semanas de mídia), importado automaticamente.
 > O roteamento ao negócio continua pelo `phone_number_id` (em `metadata`), igual
 > ao `messages`. Echoes/history idempotentes por `id` da mensagem (dedupe).
 
+## 4.2 Conectar o WhatsApp — dois caminhos
+
+A tela de **"variação de login"** do Login for Business **não** mostra a opção de
+WhatsApp Embedded Signup até o app virar **Tech Provider** (produto WhatsApp +
+Verificação do Negócio + Partner Solution / *Solution ID*, ~5 dias de revisão).
+Por isso há dois caminhos na aba **Canais → Conexões → WhatsApp**:
+
+### A) Manual (Cloud API clássica) — funciona já, sem Tech Provider
+Botão **"Conectar manualmente"**. No painel da Meta em **WhatsApp → Configuração
+da API**, copie:
+- `phone_number_id`
+- `waba_id` (WhatsApp Business Account ID)
+- um **token** — gere um **System User** (permanente) em *Business Settings →
+  Users → System Users* com acesso à WABA, senão o token de teste expira em 24h.
+
+O Trama valida o número, assina o app na WABA (`subscribed_apps`) e salva a
+conexão. ⚠️ Neste modo o número roda **só** na Cloud API — o app WhatsApp Business
+no celular daquele número deixa de funcionar (use um número dedicado à API).
+
+### B) Embedded Signup (coexistência) — mantém o app no celular
+Botão **"Embedded Signup"** (abre o popup da Meta via SDK JS). Provisiona/seleciona
+a WABA e o número, mostra o **QR code** de coexistência e devolve os ids + um
+`code`. Requer:
+- app aprovado como **Tech Provider** e uma config de **Login for Business** do
+  tipo coexistência (a variação **"WhatsApp Embedded Signup"**);
+- as variáveis **`NEXT_PUBLIC_META_APP_ID`** e **`NEXT_PUBLIC_META_LOGIN_CONFIG_ID`**
+  (mesmos valores das `META_*`), para o SDK no browser.
+
 ## 5. App Review
 
 Para uso fora dos usuários de teste, a Meta exige **App Review** das permissões
