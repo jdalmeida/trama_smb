@@ -88,6 +88,11 @@ export interface ChannelConnectionDTO {
   /** Conexão criada pelo modo de simulação (sem Meta real). */
   simulada: boolean;
   /**
+   * Origem da conexão: 'meta' = API oficial (Cloud API/Embedded Signup);
+   * 'evolution' = WhatsApp não-oficial via Evolution API (self-host).
+   */
+  provider: 'meta' | 'evolution';
+  /**
    * WhatsApp em modo coexistência: o número roda ao mesmo tempo no app WhatsApp
    * Business (celular) e na Cloud API. Recebemos echoes do app + histórico.
    */
