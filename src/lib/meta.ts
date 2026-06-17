@@ -24,6 +24,9 @@ const SCOPES = [
   'business_management',
   'pages_show_list',
   'pages_messaging',
+  // Necessário para assinar a Página nos webhooks (subscribed_apps); sem ele a
+  // Meta não entrega os eventos de mensagem da Página/Instagram.
+  'pages_manage_metadata',
   'instagram_basic',
   'instagram_manage_messages',
   'whatsapp_business_management',
@@ -220,6 +223,17 @@ async function descobrirPaginas(token: string, out: ContaDescoberta[]): Promise<
           meta: { pageId: page.id, igId: ig.id },
         });
       }
+      // Assina a Página nos webhooks de mensagem (Messenger + Instagram
+      // vinculado). Best-effort: uma falha aqui não impede salvar a conexão,
+      // mas é logada porque sem isso nenhuma mensagem chega.
+      try {
+        await assinarPaginaWebhooks(page.id, page.access_token);
+      } catch (err) {
+        console.warn('[descobrirPaginas] falha ao assinar webhooks da Página', {
+          pageId: page.id,
+          erro: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   } catch {
     // Permissão ausente ou sem páginas — segue sem Messenger/Instagram.
@@ -305,6 +319,35 @@ export async function assinarAppNaWaba(wabaId: string, token: string): Promise<v
       | { error?: { message?: string } }
       | null;
     throw new Error(json?.error?.message || `Falha ao assinar a WABA (${res.status})`);
+  }
+}
+
+/**
+ * Assina a Página nos webhooks de mensageria (POST /{page-id}/subscribed_apps).
+ *
+ * Esta é a etapa que faltava: sem assinar a Página, a Meta NÃO entrega os
+ * webhooks de mensagens dela (nem do Instagram vinculado) — por isso "conecta
+ * mas não chega conversa nenhuma". Usa o token da Página (page.access_token) e é
+ * idempotente do lado da Meta. Requer o scope `pages_manage_metadata`.
+ */
+export async function assinarPaginaWebhooks(
+  pageId: string,
+  pageToken: string,
+): Promise<void> {
+  const url = new URL(`${GRAPH}/${pageId}/subscribed_apps`);
+  url.searchParams.set(
+    'subscribed_fields',
+    'messages,messaging_postbacks,message_echoes,messaging_optins,messaging_referrals',
+  );
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${pageToken}` },
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => null)) as
+      | { error?: { message?: string } }
+      | null;
+    throw new Error(json?.error?.message || `Falha ao assinar a Página (${res.status})`);
   }
 }
 
