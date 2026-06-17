@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { generateText, Output } from 'ai';
+import { generateText, NoObjectGeneratedError, Output } from 'ai';
 import { getWritable } from 'workflow';
 import { getDb } from '@/src/db';
 import { deliverables, runs } from '@/src/db/schema';
@@ -163,34 +163,53 @@ export async function extrairEntregavel(args: {
     'Organize o conteúdo acima no formato estruturado solicitado, em português brasileiro.',
   ].join('\n');
 
-  if (ehVendas) {
+  // Extração estruturada usa o tier 'cheap' (structured output nativo e
+  // confiável). O 'worker' faz o raciocínio do agente, cujo resultado já está
+  // no rascunho; aqui é só reformatar fielmente no schema da persona.
+  try {
+    if (ehVendas) {
+      const r = await generateText({
+        model: modelFor('cheap'),
+        system,
+        prompt,
+        output: Output.object({ schema: ProspectingPlanSchema }),
+      });
+      console.log('[extrairEntregavel] fim', { personaId: args.personaId });
+      return { tipo: 'plano-prospeccao', ...r.output };
+    }
+
+    if (ehConteudo) {
+      const r = await generateText({
+        model: modelFor('cheap'),
+        system,
+        prompt,
+        output: Output.object({ schema: ContentPlanSchema }),
+      });
+      console.log('[extrairEntregavel] fim', { personaId: args.personaId });
+      return { tipo: 'plano-conteudo', ...r.output };
+    }
+
     const r = await generateText({
-      model: modelFor('worker'),
+      model: modelFor('cheap'),
       system,
       prompt,
-      output: Output.object({ schema: ProspectingPlanSchema }),
+      output: Output.object({ schema: MarketResearchSchema }),
     });
     console.log('[extrairEntregavel] fim', { personaId: args.personaId });
-    return { tipo: 'plano-prospeccao', ...r.output };
+    return { tipo: 'pesquisa-mercado', ...r.output };
+  } catch (err) {
+    // Rede de segurança: se a estruturação falhar (modelo não gerou objeto que
+    // bate com o schema), não descartamos o trabalho do agente — entregamos o
+    // rascunho como texto. A UI já sabe renderizar { tipo: 'texto' }.
+    if (NoObjectGeneratedError.isInstance(err)) {
+      console.warn('[extrairEntregavel] estruturação falhou; salvando como texto', {
+        personaId: args.personaId,
+        cause: err.cause,
+        finishReason: err.finishReason,
+        amostraTexto: err.text?.slice(0, 300),
+      });
+      return { tipo: 'texto', texto: args.rascunho };
+    }
+    throw err;
   }
-
-  if (ehConteudo) {
-    const r = await generateText({
-      model: modelFor('worker'),
-      system,
-      prompt,
-      output: Output.object({ schema: ContentPlanSchema }),
-    });
-    console.log('[extrairEntregavel] fim', { personaId: args.personaId });
-    return { tipo: 'plano-conteudo', ...r.output };
-  }
-
-  const r = await generateText({
-    model: modelFor('worker'),
-    system,
-    prompt,
-    output: Output.object({ schema: MarketResearchSchema }),
-  });
-  console.log('[extrairEntregavel] fim', { personaId: args.personaId });
-  return { tipo: 'pesquisa-mercado', ...r.output };
 }
