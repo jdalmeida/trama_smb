@@ -21,6 +21,7 @@
   "dependencies": {
     "@ai-sdk/react": "3.0.199",
     "@clerk/nextjs": "7.4.3",
+    "@vercel/blob": "^2.4.1",
     "@vercel/functions": "3.6.2",
     "@workflow/ai": "5.0.0",
     "ai": "6.0.197",
