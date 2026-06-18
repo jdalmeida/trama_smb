@@ -109,6 +109,8 @@ export interface ChannelMessageDTO {
   tipo: MessageType;
   texto: string | null;
   status: MessageStatus | null;
+  /** Saída gerada pelo piloto automático (não digitada pelo dono). */
+  automatica: boolean;
   /** Anexos/metadados normalizados (urls de mídia, coordenadas, etc.). */
   anexos: ChannelAnexo[];
   enviadaEm: string;
@@ -134,6 +136,10 @@ export interface ConversationDTO {
   cardId: string | null;
   status: ConversationStatus;
   naoLidas: number;
+  /** Piloto automático ligado: o agente responde o lead sozinho. */
+  autopilot: boolean;
+  /** Diretriz do dono para o piloto (tom/limites), quando definida. */
+  autopilotInstrucao: string | null;
   ultimaPrevia: string | null;
   ultimaMensagemEm: string | null;
   criadoEm: string;
@@ -224,6 +230,8 @@ export interface NormalizedMessage {
   direction: MessageDirection;
   /** Veio do `history` (mensagem antiga): não notifica nem mexe no badge. */
   historico: boolean;
+  /** Saída gerada pelo piloto automático (default false). */
+  automatica?: boolean;
 }
 
 /** Um contato sincronizado do app (smb_app_state_sync). */

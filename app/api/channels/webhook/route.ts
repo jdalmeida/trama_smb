@@ -1,5 +1,6 @@
 import { normalizarWebhook } from '@/src/domain/channels';
 import { aplicarContatos, ingestMensagem } from '@/src/lib/channels';
+import { dispararAtendimentoAutopilot } from '@/src/lib/autopilot-trigger';
 import { verificarAssinatura, webhookVerifyToken } from '@/src/lib/meta';
 
 export const dynamic = 'force-dynamic';
@@ -52,9 +53,14 @@ export async function POST(req: Request) {
     contatos: contatos.length,
   });
   // Processa em sequência; falhas individuais não derrubam o lote.
+  // Conversas com piloto ligado que receberam entrada ao vivo: acionamos o
+  // agente UMA vez por conversa, após ingerir tudo (várias mensagens no mesmo
+  // lote não disparam respostas repetidas).
+  const autopilot = new Map<string, string>();
   for (const m of mensagens) {
     try {
-      await ingestMensagem(m);
+      const r = await ingestMensagem(m);
+      if (r?.autopilotPendente) autopilot.set(r.conversationId, r.businessId);
     } catch (err) {
       console.error('[webhook/meta] falha ao ingerir mensagem', {
         platform: m.platform,
@@ -62,6 +68,9 @@ export async function POST(req: Request) {
         erro: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+  for (const [conversationId, businessId] of autopilot) {
+    await dispararAtendimentoAutopilot(businessId, conversationId);
   }
   // Coexistência: sincroniza nomes de contatos vindos do app (smb_app_state_sync).
   if (contatos.length > 0) {

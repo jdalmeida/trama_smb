@@ -1,6 +1,7 @@
 import { falha, naoAutenticado, negocioAtual } from '@/src/lib/api';
 import { ChannelPlatformSchema, SimularMensagemSchema } from '@/src/domain/channels';
 import { garantirConexaoSimulada, simularEntrada } from '@/src/lib/channels';
+import { dispararAtendimentoAutopilot } from '@/src/lib/autopilot-trigger';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,15 @@ export async function POST(req: Request) {
 
     const input = SimularMensagemSchema.parse(body);
     const res = await simularEntrada(businessId, input);
-    return Response.json({ ok: true, ...res }, { status: 201 });
+    // Simula o caminho real: entrada ao vivo numa conversa com piloto ligado
+    // aciona o agente de atendimento (permite testar o piloto sem a Meta).
+    if (res?.autopilotPendente) {
+      await dispararAtendimentoAutopilot(res.businessId, res.conversationId);
+    }
+    return Response.json(
+      { ok: true, conversationId: res?.conversationId ?? null },
+      { status: 201 },
+    );
   } catch (err) {
     return falha(err);
   }

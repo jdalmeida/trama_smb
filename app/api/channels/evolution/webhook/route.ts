@@ -1,4 +1,5 @@
 import { ingestMensagem } from '@/src/lib/channels';
+import { dispararAtendimentoAutopilot } from '@/src/lib/autopilot-trigger';
 import { evolutionWebhookToken, normalizarEvolution } from '@/src/lib/evolution';
 
 export const dynamic = 'force-dynamic';
@@ -28,15 +29,20 @@ export async function POST(req: Request) {
     instance: (payload as { instance?: string })?.instance ?? null,
     mensagens: mensagens.length,
   });
+  const autopilot = new Map<string, string>();
   for (const m of mensagens) {
     try {
-      await ingestMensagem(m);
+      const r = await ingestMensagem(m);
+      if (r?.autopilotPendente) autopilot.set(r.conversationId, r.businessId);
     } catch (err) {
       console.error('[webhook/evolution] falha ao ingerir mensagem', {
         connectionExternalId: m.connectionExternalId,
         erro: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+  for (const [conversationId, businessId] of autopilot) {
+    await dispararAtendimentoAutopilot(businessId, conversationId);
   }
 
   return Response.json({ ok: true });
