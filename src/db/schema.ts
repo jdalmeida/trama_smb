@@ -36,6 +36,11 @@ import type {
   MessageStatus,
   MessageType,
 } from '@/src/domain/channels';
+import type {
+  LeadSignalPrioridade,
+  LeadSignalStatus,
+  LeadSignalTipo,
+} from '@/src/domain/channel-autopilot';
 
 /** Um negócio pertence a um usuário do Clerk (escopo de tenancy do MVP). */
 export const businesses = pgTable(
@@ -520,6 +525,14 @@ export const channelConversations = pgTable(
     naoLidas: integer('nao_lidas').notNull().default(0),
     ultimaPrevia: text('ultima_previa'),
     ultimaMensagemEm: timestamp('ultima_mensagem_em', { withTimezone: true }),
+    /**
+     * Piloto automático: quando true, o agente de atendimento responde o lead
+     * sozinho e manda sinais ao CEO. Só pode ser ligado depois que o dono já
+     * iniciou a conversa (guardrail) — ver src/lib/channel-autopilot.ts.
+     */
+    autopilot: boolean('autopilot').notNull().default(false),
+    /** Diretriz do dono para o piloto (tom, limites, objetivo). */
+    autopilotInstrucao: text('autopilot_instrucao'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -556,6 +569,11 @@ export const channelMessages = pgTable(
     anexos: jsonb('anexos').$type<ChannelAnexo[]>().notNull().default([]),
     /** Só para mensagens de saída (preparado para a próxima leva). */
     status: varchar('status', { length: 16 }).$type<MessageStatus>(),
+    /**
+     * Saída gerada e enviada pelo piloto automático (não pelo dono). Marca a
+     * bolha como "respondida pela IA" no inbox — transparência do guardrail.
+     */
+    automatica: boolean('automatica').notNull().default(false),
     /** Id da mensagem na plataforma — dedupe de reentregas do webhook. */
     externalMessageId: text('external_message_id'),
     enviadaEm: timestamp('enviada_em', { withTimezone: true }).notNull().defaultNow(),
@@ -565,5 +583,48 @@ export const channelMessages = pgTable(
     index('channel_messages_business_idx').on(t.businessId),
     index('channel_messages_conversation_idx').on(t.conversationId),
     index('channel_messages_external_idx').on(t.externalMessageId),
+  ],
+);
+
+/**
+ * Sinal extraído pelo agente de atendimento numa conversa com piloto automático.
+ * É a "mensagem" que o atendimento manda ao CEO: cada linha descreve algo que o
+ * lead sinalizou (interesse, pedido de orçamento, objeção, menção a concorrente)
+ * e carrega o que o CEO fez ao reagir (`acaoCeo`). Alimenta o painel de sinais
+ * do inbox e fecha o loop entre os subsistemas (atendimento → CEO → CRM/pesquisa).
+ */
+export const channelSignals = pgTable(
+  'channel_signals',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => channelConversations.id, { onDelete: 'cascade' }),
+    /** Mensagem do lead que originou o sinal (quando aplicável). */
+    messageId: uuid('message_id').references(() => channelMessages.id, {
+      onDelete: 'set null',
+    }),
+    tipo: varchar('tipo', { length: 32 }).$type<LeadSignalTipo>().notNull(),
+    resumo: text('resumo').notNull(),
+    prioridade: varchar('prioridade', { length: 8 })
+      .$type<LeadSignalPrioridade>()
+      .notNull()
+      .default('media'),
+    status: varchar('status', { length: 16 })
+      .$type<LeadSignalStatus>()
+      .notNull()
+      .default('novo'),
+    /** Resumo do que o CEO fez ao reagir (mexer no CRM, disparar pesquisa...). */
+    acaoCeo: text('acao_ceo'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    processadoEm: timestamp('processado_em', { withTimezone: true }),
+  },
+  (t) => [
+    index('channel_signals_business_idx').on(t.businessId),
+    index('channel_signals_conversation_idx').on(t.conversationId),
+    index('channel_signals_status_idx').on(t.status),
   ],
 );
