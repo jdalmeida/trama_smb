@@ -35,8 +35,14 @@ export function ConversationList({
 }: ConversationListProps) {
   const [editando, setEditando] = React.useState<string | null>(null);
   const [rascunho, setRascunho] = React.useState('');
+  // Exclusão é destrutiva: pede uma confirmação inline em vez de apagar no
+  // primeiro clique (e sem recorrer a um window.confirm nativo).
+  const [confirmandoExclusao, setConfirmandoExclusao] = React.useState<
+    string | null
+  >(null);
 
   function iniciarEdicao(c: Conversa) {
+    setConfirmandoExclusao(null);
     setEditando(c.id);
     setRascunho(c.titulo ?? '');
   }
@@ -80,6 +86,7 @@ export function ConversationList({
                       <input
                         autoFocus
                         value={rascunho}
+                        maxLength={120}
                         onChange={(e) => setRascunho(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') confirmarEdicao(c.id);
@@ -132,24 +139,51 @@ export function ConversationList({
                           {c.mensagens > 0 ? ` · ${c.mensagens} msg` : ''}
                         </span>
                       </button>
-                      <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 has-focus-visible:opacity-100">
-                        <button
-                          type="button"
-                          onClick={() => iniciarEdicao(c)}
-                          className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-                          aria-label="Renomear conversa"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(c.id)}
-                          className="rounded-md p-1 text-muted-foreground hover:text-destructive"
-                          aria-label="Apagar conversa"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
+                      {confirmandoExclusao === c.id ? (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <span className="px-1 text-[10px] text-muted-foreground">
+                            Apagar?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDelete(c.id);
+                              setConfirmandoExclusao(null);
+                            }}
+                            className="rounded-md p-1 text-destructive hover:bg-destructive/10"
+                            aria-label="Confirmar exclusão da conversa"
+                          >
+                            <Check className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmandoExclusao(null)}
+                            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                            aria-label="Cancelar exclusão"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 has-focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => iniciarEdicao(c)}
+                            className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+                            aria-label="Renomear conversa"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmandoExclusao(c.id)}
+                            className="rounded-md p-1 text-muted-foreground hover:text-destructive"
+                            aria-label="Apagar conversa"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
@@ -165,9 +199,12 @@ export function ConversationList({
 function formatarData(iso: string): string {
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return '';
+  // Inclui o ano só fora do ano corrente — evita ambiguidade entre anos.
+  const mesmoAno = data.getFullYear() === new Date().getFullYear();
   return data.toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'short',
+    year: mesmoAno ? undefined : 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
