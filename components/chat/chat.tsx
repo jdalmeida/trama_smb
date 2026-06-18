@@ -101,7 +101,8 @@ export function Chat({
         {status === 'submitted' ? <IndicadorPensando /> : null}
         {status === 'error' ? (
           <p className="px-2 text-xs text-destructive">
-            Algo deu errado. Tente enviar novamente.
+            Não consegui enviar sua mensagem. Verifique sua conexão e tente de
+            novo.
           </p>
         ) : null}
 
