@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import { Streamdown } from 'streamdown';
-import { ShieldCheck } from 'lucide-react';
+import { Megaphone, ShieldCheck } from 'lucide-react';
 import type { DeliverableContent } from '@/src/domain/deliverable';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import {
   Card,
   CardAction,
@@ -123,6 +125,7 @@ function PlanoConteudoView({
                   </AccordionTrigger>
                   <AccordionContent className="text-xs">
                     <Md>{ideia.texto}</Md>
+                    <EnviarParaPublicacoes canal={ideia.canal} texto={ideia.texto} />
                   </AccordionContent>
                 </AccordionItem>
               ))}
@@ -339,6 +342,53 @@ function PlanoProspeccaoView({
 }
 
 /* --------------------------------- Auxiliares -------------------------------- */
+
+/**
+ * Envia uma ideia pronta para a fila de Publicações (Canais › Publicações) como
+ * rascunho. É o caminho determinístico que complementa a tool da persona: mesmo
+ * planos antigos podem ser empurrados para a fila com um clique. O dono revisa,
+ * anexa a imagem, escolhe a rede e publica — nada vai ao ar sem aprovação.
+ */
+function EnviarParaPublicacoes({ canal, texto }: { canal: string; texto: string }) {
+  const [enviando, setEnviando] = React.useState(false);
+  const [enviado, setEnviado] = React.useState(false);
+
+  async function enviar() {
+    if (enviando || enviado) return;
+    setEnviando(true);
+    try {
+      const res = await fetch('/api/channels/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto, canalSugerido: canal, origem: 'ia_sugestao' }),
+      });
+      if (!res.ok) throw new Error();
+      setEnviado(true);
+      toast({
+        variant: 'success',
+        title: 'Enviado para Publicações',
+        description: 'Revise, anexe a imagem e publique em Canais › Publicações.',
+      });
+    } catch {
+      toast({ title: 'Não foi possível enviar para Publicações' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="mt-2 h-7 gap-1.5 text-[11px]"
+      onClick={() => void enviar()}
+      disabled={enviando || enviado}
+    >
+      <Megaphone className="size-3.5" aria-hidden />
+      {enviado ? 'Enviado para Publicações' : enviando ? 'Enviando…' : 'Enviar para Publicações'}
+    </Button>
+  );
+}
 
 /** Fallback genérico para tipo desconhecido: JSON formatado. */
 function FallbackJson({ content }: { content: unknown }) {
