@@ -5,6 +5,7 @@ import { CircleAlert } from 'lucide-react';
 import type { PersonaConfig } from '@/src/agents/registry';
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import { cn } from '@/lib/utils';
+import { PERSONA_THEME } from '@/components/team/persona-theme';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoaderIcon, type LoaderIconHandle } from '@/components/ui/loader';
@@ -98,6 +99,7 @@ export function PersonaCard({
 }: PersonaCardProps) {
   const iconRef = React.useRef<AnimatedIconHandle>(null);
   const Icon = PERSONA_ICON[persona.id];
+  const tema = PERSONA_THEME[persona.id];
 
   return (
     <Card
@@ -112,7 +114,10 @@ export function PersonaCard({
     >
       <CardContent className="flex items-start gap-3">
         <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-lg',
+            tema.iconChip,
+          )}
           aria-hidden
         >
           <Icon ref={iconRef} size={20} className="flex" />
