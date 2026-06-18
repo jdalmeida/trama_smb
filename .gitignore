@@ -25,6 +25,10 @@ coverage/
 .claude/
 .agents/
 
+# impeccable: versiona só o sidecar do design system; ignora caches/relatórios locais
+.impeccable/*
+!.impeccable/design.json
+
 # clerk configuration (can include secrets)
 /.clerk/
 .env*
