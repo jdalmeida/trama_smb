@@ -36,6 +36,12 @@ import type {
   MessageStatus,
   MessageType,
 } from '@/src/domain/channels';
+import type {
+  SocialPostOrigin,
+  SocialPostResult,
+  SocialPostStatus,
+  SocialPostTarget,
+} from '@/src/domain/social-posts';
 
 /** Um negócio pertence a um usuário do Clerk (escopo de tenancy do MVP). */
 export const businesses = pgTable(
@@ -566,4 +572,48 @@ export const channelMessages = pgTable(
     index('channel_messages_conversation_idx').on(t.conversationId),
     index('channel_messages_external_idx').on(t.externalMessageId),
   ],
+);
+
+/* ================================================================== *
+ * Publicações sociais (posts no feed do Facebook / Instagram)
+ *
+ * Leva 3: a persona de Conteúdo & Aquisição (ou o dono) rascunha um post; ele
+ * entra na fila como 'rascunho' e só vai para a rede quando o dono revisa,
+ * escolhe as redes e APROVA. A IA nunca publica sozinha (guardrail). A
+ * publicação reusa as channel_connections: a conexão `messenger` representa a
+ * Página do Facebook e a `instagram` a conta profissional vinculada — daí os
+ * resultados/alvos guardarem 'facebook'/'instagram'.
+ * ================================================================== */
+export const socialPosts = pgTable(
+  'social_posts',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 16 })
+      .$type<SocialPostStatus>()
+      .notNull()
+      .default('rascunho'),
+    origem: varchar('origem', { length: 16 })
+      .$type<SocialPostOrigin>()
+      .notNull()
+      .default('manual'),
+    /** Legenda/copy do post. */
+    texto: text('texto').notNull(),
+    /** URL pública da imagem (obrigatória para publicar no Instagram). */
+    imageUrl: text('image_url'),
+    /** Redes-alvo escolhidas pelo dono. */
+    alvos: jsonb('alvos').$type<SocialPostTarget[]>().notNull().default([]),
+    /** Resultado da publicação por rede (id externo, permalink, erro). */
+    resultados: jsonb('resultados').$type<SocialPostResult[]>().notNull().default([]),
+    /** Canal sugerido pela IA (ex.: "Instagram") — só orientação. */
+    canalSugerido: text('canal_sugerido'),
+    /** Origem opcional do rascunho: deliverableId/runId da persona. */
+    meta: jsonb('meta').$type<Record<string, unknown>>().notNull().default({}),
+    publicadoEm: timestamp('publicado_em', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('social_posts_business_idx').on(t.businessId)],
 );

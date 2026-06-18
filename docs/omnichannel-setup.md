@@ -18,9 +18,13 @@ for Business** + **Webhooks** da Graph API.
   conexão (Cloud API / Send API da Meta, ou Evolution API) — ver seção 7.
 - **Rascunha com IA**: o dono pede uma sugestão de resposta (perfil do negócio +
   histórico da conversa), revisa, edita e envia — ver seção 7.
+- **Publica posts** no feed do **Facebook** (Página) e do **Instagram**, com fluxo
+  de aprovação: a IA (persona de Conteúdo & Aquisição) rascunha o post, o dono
+  revisa, anexa a imagem, escolhe a rede e aprova — ver seção 8.
 
 > Guardrail (LGPD/CDC): o contato é sempre conduzido pelo dono. A IA só sugere o
-> rascunho; nada de outreach automatizado em massa.
+> rascunho; nada de outreach automatizado em massa. **Nenhum post vai ao ar sem a
+> aprovação explícita do dono.**
 
 ## 1. Criar o Meta App
 
@@ -68,8 +72,11 @@ O botão **Conectar** na aba Canais redireciona para o OAuth da Meta. As permiss
 pedidas:
 
 - `business_management`, `pages_show_list`, `pages_messaging`
+- `pages_manage_metadata` (assinar a Página nos webhooks)
 - `instagram_basic`, `instagram_manage_messages`
 - `whatsapp_business_management`, `whatsapp_business_messaging`
+- **Publicar posts (seção 8):** `pages_manage_posts`, `pages_read_engagement`
+  (feed do Facebook) e `instagram_content_publish` (feed do Instagram).
 
 Para o fluxo de **Embedded Signup** (recomendado para WhatsApp), crie uma
 configuração de **Facebook Login for Business** e preencha:
@@ -187,8 +194,8 @@ em desenvolvimento, só contas com papel no app (admin/dev/tester) conseguem con
 
 ## 6. Banco de dados
 
-As 3 tabelas (`channel_connections`, `channel_conversations`, `channel_messages`)
-são aditivas. Aplique com:
+As tabelas (`channel_connections`, `channel_conversations`, `channel_messages` e,
+para as publicações, `social_posts`) são aditivas. Aplique com:
 ```
 pnpm db:push
 ```
@@ -220,6 +227,53 @@ externa), útil para validar a UI.
 > **Guardrail:** a IA só rascunha. O envio é sempre uma ação manual do dono — sem
 > disparo automatizado em massa, coerente com o agente de prospecção.
 
+## 8. Publicar posts (Facebook / Instagram)
+
+A aba **Canais → Publicações** é a fila de aprovação de posts. Diferente das DMs,
+aqui o que vai ao ar é um **post público** no feed.
+
+**De onde vêm os rascunhos:**
+- **Da IA (proativo):** no chat com o **CEO**, peça conteúdo ("preciso de posts
+  pra semana", "divulga a promoção de inverno"). O CEO delega à persona
+  **Conteúdo & Aquisição**, que escreve os posts e os envia para a fila como
+  rascunhos (tool `criarRascunhoPost`). Você também pode empurrar uma "ideia
+  pronta" de um plano de conteúdo já entregue, pelo botão **Enviar para
+  Publicações** no entregável.
+- **Manual:** botão **Novo post** na própria aba.
+
+**Aprovar e publicar:** abra o rascunho, revise a legenda, **anexe a imagem**,
+escolha **Facebook** e/ou **Instagram** e clique **Aprovar e publicar**. Nada vai
+ao ar sem esse clique.
+
+**Como publica (Graph API), usando o page access token já conectado:**
+- **Facebook** (conexão de Página, a mesma do Messenger): com imagem →
+  `POST /{page-id}/photos`; sem imagem → `POST /{page-id}/feed`.
+- **Instagram** (conta profissional vinculada): fluxo de 2 passos —
+  `POST /{ig-id}/media` (container com `image_url` + `caption`) e depois
+  `POST /{ig-id}/media_publish`. **O Instagram exige imagem** e ela precisa estar
+  numa **URL pública**.
+
+**Hospedagem da imagem (Vercel Blob):** a imagem que você anexa é enviada para o
+**Vercel Blob**, que devolve a URL pública usada na publicação. Provisione em
+*Vercel → Storage → Blob* e configure:
+```
+BLOB_READ_WRITE_TOKEN=...
+```
+Sem esse token, posts **com imagem** não são publicados de verdade — ficam em
+simulação (útil para testar o fluxo). Posts só-texto do Facebook não dependem dele.
+
+**Permissões e reconexão:** publicar em produção exige **App Review** de
+`pages_manage_posts` e `instagram_content_publish` (seção 5). Como as contas
+foram conectadas antes dessas permissões existirem, **reconecte** a Página e o
+Instagram (aba Conexões) para o token passar a ter permissão de publicar.
+
+**Limitações da imagem (Instagram):** JPEG/PNG, proporção entre 4:5 e 1.91:1.
+Imagens fora desses limites podem ser recusadas pela Graph API — o erro aparece
+no resultado por rede, dentro do post.
+
+> **Guardrail:** a persona apenas escreve os posts; a publicação é sempre uma
+> ação manual de aprovação do dono. Não há agendamento automático.
+
 ## Testar sem Meta (simulação)
 
 Na aba **Canais → Conexões**, clique em **Conta de teste** de qualquer plataforma.
@@ -227,3 +281,9 @@ Depois, em **Caixa de entrada → Simular**, injete uma mensagem. Ela percorre o
 mesmo caminho do webhook real (normalização → ingest) e aparece no inbox. Em
 seguida, escreva uma resposta no campo (ou use **Rascunhar com IA**) e clique em
 **Enviar** — em conta de teste a saída é só registrada, exercitando o composer.
+
+Para as **Publicações**: crie contas de teste de **Messenger** (vale como a
+Página do Facebook) e/ou **Instagram** em Conexões. Em **Publicações**, crie um
+post (ou peça à persona de Conteúdo), escolha as redes e clique **Aprovar e
+publicar** — em conta de teste a publicação é só registrada (sem chamada externa),
+com um id simulado no resultado.
