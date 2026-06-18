@@ -18,7 +18,13 @@ import type { ChannelPlatform } from '@/src/domain/channels';
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v21.0';
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
-/** Permissões pedidas no OAuth (usadas quando não há config_id de Embedded Signup). */
+/**
+ * Permissões pedidas no OAuth (usadas quando não há config_id de Embedded
+ * Signup; com config_id as permissões vêm da configuração do app no painel da
+ * Meta — inclua lá as de publicação também). As permissões de publicação de
+ * feed (`pages_manage_posts`, `instagram_content_publish`) exigem App Review
+ * para produção; veja docs/omnichannel-setup.md.
+ */
 const SCOPES = [
   'public_profile',
   'business_management',
@@ -27,8 +33,13 @@ const SCOPES = [
   // Necessário para assinar a Página nos webhooks (subscribed_apps); sem ele a
   // Meta não entrega os eventos de mensagem da Página/Instagram.
   'pages_manage_metadata',
+  // Publicar no feed da Página (posts) e ler engajamento dos posts.
+  'pages_manage_posts',
+  'pages_read_engagement',
   'instagram_basic',
   'instagram_manage_messages',
+  // Publicar no feed do Instagram (fluxo de container de mídia).
+  'instagram_content_publish',
   'whatsapp_business_management',
   'whatsapp_business_messaging',
 ] as const;
@@ -414,6 +425,95 @@ export async function enviarTextoMessaging(
     message: { text: texto },
   })) as { message_id?: string };
   return data.message_id ?? null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Publicação no feed (posts) — Facebook (Página) e Instagram
+ *
+ * Diferente do envio de DM, aqui publicamos um POST público no feed. Usa o
+ * page access token (o mesmo já salvo nas conexões `messenger`/`instagram`).
+ * ------------------------------------------------------------------ */
+
+/**
+ * Publica um post no feed da Página do Facebook. Com imagem usa
+ * POST /{page-id}/photos (a imagem precisa estar numa URL pública); sem imagem,
+ * POST /{page-id}/feed (texto). Retorna o id do post e, best-effort, o
+ * permalink. Requer o page access token com a permissão `pages_manage_posts`.
+ */
+export async function publicarPostFacebook(
+  pageId: string,
+  pageToken: string,
+  input: { mensagem: string; imageUrl?: string | null },
+): Promise<{ externalPostId: string; permalink: string | null }> {
+  if (input.imageUrl) {
+    const data = (await postJson(`${GRAPH}/${pageId}/photos`, pageToken, {
+      url: input.imageUrl,
+      caption: input.mensagem,
+      published: true,
+    })) as { id?: string; post_id?: string };
+    const postId = data.post_id || data.id || '';
+    return { externalPostId: postId, permalink: await permalinkFacebook(postId, pageToken) };
+  }
+  const data = (await postJson(`${GRAPH}/${pageId}/feed`, pageToken, {
+    message: input.mensagem,
+  })) as { id?: string };
+  const postId = data.id ?? '';
+  return { externalPostId: postId, permalink: await permalinkFacebook(postId, pageToken) };
+}
+
+/** Busca best-effort o permalink de um post da Página. */
+async function permalinkFacebook(postId: string, token: string): Promise<string | null> {
+  if (!postId) return null;
+  try {
+    const url = new URL(`${GRAPH}/${postId}`);
+    url.searchParams.set('fields', 'permalink_url');
+    url.searchParams.set('access_token', token);
+    const data = (await getJson(url.toString())) as { permalink_url?: string };
+    return data.permalink_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Publica uma foto no feed do Instagram (fluxo de 2 passos da Graph API):
+ *  1) cria um container de mídia (POST /{ig-id}/media com image_url + caption);
+ *  2) publica o container (POST /{ig-id}/media_publish com creation_id).
+ *
+ * O Instagram EXIGE uma imagem em URL pública (image_url) — não publica texto
+ * puro. Requer o token com a permissão `instagram_content_publish`.
+ */
+export async function publicarPostInstagram(
+  igId: string,
+  token: string,
+  input: { caption: string; imageUrl: string },
+): Promise<{ externalPostId: string; permalink: string | null }> {
+  const container = (await postJson(`${GRAPH}/${igId}/media`, token, {
+    image_url: input.imageUrl,
+    caption: input.caption,
+  })) as { id?: string };
+  const creationId = container.id;
+  if (!creationId) throw new Error('Instagram não devolveu o container de mídia.');
+
+  const pub = (await postJson(`${GRAPH}/${igId}/media_publish`, token, {
+    creation_id: creationId,
+  })) as { id?: string };
+  const mediaId = pub.id ?? '';
+  return { externalPostId: mediaId, permalink: await permalinkInstagram(mediaId, token) };
+}
+
+/** Busca best-effort o permalink de uma mídia publicada no Instagram. */
+async function permalinkInstagram(mediaId: string, token: string): Promise<string | null> {
+  if (!mediaId) return null;
+  try {
+    const url = new URL(`${GRAPH}/${mediaId}`);
+    url.searchParams.set('fields', 'permalink');
+    url.searchParams.set('access_token', token);
+    const data = (await getJson(url.toString())) as { permalink?: string };
+    return data.permalink ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ *

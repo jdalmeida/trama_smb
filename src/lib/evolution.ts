@@ -57,11 +57,16 @@ async function evoFetch(path: string, init?: RequestInit): Promise<unknown> {
     | { message?: unknown; error?: unknown; response?: { message?: unknown } }
     | null;
   if (!res.ok) {
-    const msg =
+    // Inclui o corpo da resposta no erro. Um 400 do sendText costuma vir como
+    // `{ exists: false, jid, number }` (número não existe no WhatsApp) — sem
+    // isto o erro virava só "Evolution respondeu 400", sem pista da causa.
+    const detalhe =
       (typeof json?.response?.message === 'string' && json.response.message) ||
       (typeof json?.message === 'string' && json.message) ||
-      `Evolution respondeu ${res.status}`;
-    throw new Error(msg);
+      (json ? JSON.stringify(json) : '');
+    throw new Error(
+      `Evolution respondeu ${res.status}${detalhe ? `: ${detalhe}` : ''}`,
+    );
   }
   return json;
 }
@@ -242,8 +247,30 @@ export function normalizarEvolution(payload: unknown): NormalizedMessage[] {
       continue;
     }
 
-    const externalUserId = remoteJid.split('@')[0].replace(/\D/g, '');
+    // O WhatsApp passou a endereçar conversas 1:1 por @lid (Linked ID), que NÃO
+    // é um número discável: enviar para ele faz a Evolution responder 400
+    // (whatsappNumber → exists:false). O telefone real (…@s.whatsapp.net) vem em
+    // key.remoteJidAlt — preferimos sempre ele como chave da conversa, para o
+    // envio funcionar e o mesmo contato não duplicar entre @lid e telefone.
+    const remoteJidAlt =
+      typeof key.remoteJidAlt === 'string' ? key.remoteJidAlt : '';
+    const jidContato =
+      remoteJid.endsWith('@lid') && remoteJidAlt.endsWith('@s.whatsapp.net')
+        ? remoteJidAlt
+        : remoteJid;
+
+    const externalUserId = jidContato.split('@')[0].replace(/\D/g, '');
     if (!externalUserId) continue;
+
+    if (jidContato.endsWith('@lid')) {
+      // Não veio o telefone real: a conversa entra no inbox, mas o envio vai
+      // falhar (400) até a Evolution resolver @lid → telefone. Logamos as chaves
+      // do `key` cru para confirmar quais campos a sua versão entrega.
+      console.warn(
+        '[normalizarEvolution] mensagem @lid sem telefone real — envio falhará',
+        { remoteJid, camposKey: Object.keys(key) },
+      );
+    }
 
     const fromMe = key.fromMe === true;
     const message = (item.message ?? {}) as Record<string, unknown>;

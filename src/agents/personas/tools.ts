@@ -8,6 +8,7 @@ import {
   listarEntregaveisStep,
   salvarArtefatoStep,
 } from '@/app/steps/memoria';
+import { criarRascunhoPostStep } from '@/app/steps/social';
 import type { PersonaId } from '@/src/domain/persona';
 
 /** Contexto de tenancy das tools de uma persona (escopo do run durável). */
@@ -27,7 +28,7 @@ const CATEGORIAS = ['nota', 'pesquisa', 'decisao', 'referencia'] as const;
  * então as chamadas são retryáveis e observáveis no Workflow DevKit.
  */
 export function personaTools(ctx: PersonaToolsContext): ToolSet {
-  return {
+  const tools: ToolSet = {
     buscaWeb: tool({
       description:
         'Busca na web (somente fontes públicas) por informações reais: mercado, ' +
@@ -135,4 +136,37 @@ export function personaTools(ctx: PersonaToolsContext): ToolSet {
         lerEntregavelStep({ businessId: ctx.businessId, deliverableId }),
     }),
   };
+
+  // Só a persona de Conteúdo & Aquisição pode enfileirar posts para publicação:
+  // ela escreve a legenda e manda para a fila de Publicações do dono como
+  // RASCUNHO (origem ia_sugestao). O dono revisa, anexa imagem, escolhe a rede
+  // e publica — a IA nunca publica sozinha (mesmo guardrail das outras levas).
+  if (ctx.personaId === 'conteudo-aquisicao') {
+    tools.criarRascunhoPost = tool({
+      description:
+        'Envia um POST PRONTO para a fila de Publicações do dono (Facebook/' +
+        'Instagram) como RASCUNHO aguardando aprovação. Chame ao escrever cada ' +
+        'post pronto para publicar (a legenda completa, com chamada para ação). ' +
+        'O dono revisa, anexa a imagem, escolhe a rede e publica — você NUNCA ' +
+        'publica sozinho. Envie só o texto da legenda (a imagem é do dono).',
+      inputSchema: z.object({
+        texto: z
+          .string()
+          .describe('A legenda/copy completa do post, pronta para publicar'),
+        canalSugerido: z
+          .string()
+          .optional()
+          .describe('Rede sugerida: "Instagram" ou "Facebook" (só orientação)'),
+      }),
+      execute: ({ texto, canalSugerido }) =>
+        criarRascunhoPostStep({
+          businessId: ctx.businessId,
+          texto,
+          canalSugerido,
+          runId: ctx.runId,
+        }),
+    });
+  }
+
+  return tools;
 }
