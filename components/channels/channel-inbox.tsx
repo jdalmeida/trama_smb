@@ -1,12 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import { Inbox, MessageSquarePlus, Send, Sparkles } from 'lucide-react';
+import {
+  Bot,
+  Check,
+  Inbox,
+  Loader2,
+  MessageSquarePlus,
+  Send,
+  Sparkles,
+  TriangleAlert,
+} from 'lucide-react';
 import type {
   ChannelMessageDTO,
   ConversationDTO,
   InboxItemDTO,
 } from '@/src/domain/channels';
+import type { ChannelSignalDTO } from '@/src/domain/channel-autopilot';
+import { LEAD_SIGNAL_TIPO_LABELS } from '@/src/domain/channel-autopilot';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,10 +25,18 @@ import { toast } from '@/components/ui/toast';
 import { PlatformBadge } from '@/components/channels/platform';
 import { cn } from '@/lib/utils';
 
+type Thread = {
+  conversa: ConversationDTO;
+  mensagens: ChannelMessageDTO[];
+  sinais: ChannelSignalDTO[];
+};
+
 /**
- * Aba "Caixa de entrada": lista de conversas (esquerda) + thread read-only
- * (direita). Esta leva é só de RECEBIMENTO — o envio (com rascunho da IA) chega
- * numa próxima leva, então o campo de resposta aparece desabilitado.
+ * Aba "Caixa de entrada": lista de conversas (esquerda) + thread (direita) com
+ * composer. Além do envio manual e do rascunho assistido, a thread tem o PILOTO
+ * AUTOMÁTICO: depois que o dono iniciou a conversa, ele liga o piloto e o agente
+ * passa a responder o lead sozinho, extraindo sinais que o CEO usa para agir
+ * (mexer no CRM, disparar pesquisa). Os sinais aparecem no painel da conversa.
  */
 export function ChannelInbox({
   conversas,
@@ -27,13 +46,31 @@ export function ChannelInbox({
   onRefresh: () => void;
 }) {
   const [ativaId, setAtivaId] = React.useState<string | null>(null);
-  const [thread, setThread] = React.useState<{
-    conversa: ConversationDTO;
-    mensagens: ChannelMessageDTO[];
-  } | null>(null);
+  const [thread, setThread] = React.useState<Thread | null>(null);
   const [texto, setTexto] = React.useState('');
+  const [instrucao, setInstrucao] = React.useState('');
   const [enviando, setEnviando] = React.useState(false);
   const [rascunhando, setRascunhando] = React.useState(false);
+  const [togglando, setTogglando] = React.useState(false);
+
+  // Busca a thread. `silent` (poll) não mexe no que o dono está digitando.
+  const carregarThread = React.useCallback(
+    async (id: string, opts?: { silent?: boolean }) => {
+      try {
+        const res = await fetch(`/api/channels/conversations/${id}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as Thread;
+        setThread(data);
+        if (!opts?.silent) {
+          setInstrucao(data.conversa.autopilotInstrucao ?? '');
+          onRefresh(); // a conversa foi marcada como lida; atualiza os badges
+        }
+      } catch {
+        // silencioso
+      }
+    },
+    [onRefresh],
+  );
 
   const abrir = React.useCallback(
     async (id: string) => {
@@ -41,21 +78,18 @@ export function ChannelInbox({
         if (prev !== id) setTexto(''); // troca de conversa zera o rascunho
         return id;
       });
-      try {
-        const res = await fetch(`/api/channels/conversations/${id}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          conversa: ConversationDTO;
-          mensagens: ChannelMessageDTO[];
-        };
-        setThread(data);
-        onRefresh(); // a conversa foi marcada como lida; atualiza os badges
-      } catch {
-        // silencioso
-      }
+      await carregarThread(id, { silent: false });
     },
-    [onRefresh],
+    [carregarThread],
   );
+
+  // Poll da conversa aberta: reflete respostas do piloto e sinais novos sem o
+  // dono precisar reabrir a conversa.
+  React.useEffect(() => {
+    if (!ativaId) return;
+    const t = setInterval(() => void carregarThread(ativaId, { silent: true }), 6000);
+    return () => clearInterval(t);
+  }, [ativaId, carregarThread]);
 
   async function enviar() {
     if (!thread || !texto.trim() || enviando) return;
@@ -71,7 +105,7 @@ export function ChannelInbox({
         throw new Error(e?.erro);
       }
       setTexto('');
-      await abrir(thread.conversa.id);
+      await carregarThread(thread.conversa.id, { silent: false });
     } catch (err) {
       toast({
         title:
@@ -105,14 +139,55 @@ export function ChannelInbox({
     }
   }
 
+  // Liga/desliga o piloto (e grava a diretriz). O backend barra ligar numa
+  // conversa que o dono ainda não iniciou (guardrail).
+  async function aplicarAutopilot(ativo: boolean, comInstrucao?: boolean) {
+    if (!thread || togglando) return;
+    setTogglando(true);
+    try {
+      const body: { ativo: boolean; instrucao?: string } = { ativo };
+      if (comInstrucao || ativo) body.instrucao = instrucao.trim() || undefined;
+      const res = await fetch(`/api/channels/conversations/${thread.conversa.id}/autopilot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const e = (await res.json().catch(() => null)) as { erro?: string } | null;
+        throw new Error(e?.erro);
+      }
+      await carregarThread(thread.conversa.id, { silent: true });
+      if (ativo && !comInstrucao) {
+        toast({
+          variant: 'success',
+          title: 'Piloto automático ligado',
+          description: 'A IA vai responder este lead e avisar o CEO sobre os sinais.',
+        });
+      } else if (!ativo) {
+        toast({ title: 'Piloto automático desligado' });
+      } else {
+        toast({ variant: 'success', title: 'Diretriz salva' });
+      }
+    } catch (err) {
+      toast({
+        title:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Não foi possível alterar o piloto automático',
+      });
+    } finally {
+      setTogglando(false);
+    }
+  }
+
   async function simularMensagem() {
-    const texto = prompt('Mensagem do lead (teste):');
-    if (!texto || !texto.trim()) return;
+    const msg = prompt('Mensagem do lead (teste):');
+    if (!msg || !msg.trim()) return;
     try {
       const res = await fetch('/api/channels/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: 'whatsapp', de: 'Lead de teste', texto: texto.trim() }),
+        body: JSON.stringify({ platform: 'whatsapp', de: 'Lead de teste', texto: msg.trim() }),
       });
       if (!res.ok) throw new Error();
       onRefresh();
@@ -121,6 +196,8 @@ export function ChannelInbox({
       toast({ title: 'Não foi possível simular a mensagem' });
     }
   }
+
+  const autopilotAtivo = thread?.conversa.autopilot ?? false;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[20rem_1fr]">
@@ -167,11 +244,19 @@ export function ChannelInbox({
                         <span className="truncate text-sm font-medium text-foreground">
                           {c.nomeContato ?? c.externalUserId}
                         </span>
-                        {c.naoLidas > 0 ? (
-                          <Badge className="h-5 min-w-5 justify-center px-1.5 text-[10px]">
-                            {c.naoLidas}
-                          </Badge>
-                        ) : null}
+                        <div className="flex shrink-0 items-center gap-1">
+                          {c.autopilot ? (
+                            <Bot
+                              className="size-3.5 text-primary"
+                              aria-label="Piloto automático ligado"
+                            />
+                          ) : null}
+                          {c.naoLidas > 0 ? (
+                            <Badge className="h-5 min-w-5 justify-center px-1.5 text-[10px]">
+                              {c.naoLidas}
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         {c.ultimaPrevia ?? c.conexaoNome}
@@ -191,7 +276,7 @@ export function ChannelInbox({
           <>
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-2.5">
               <PlatformBadge platform={thread.conversa.platform} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
                   {thread.conversa.nomeContato ?? thread.conversa.externalUserId}
                 </p>
@@ -199,7 +284,55 @@ export function ChannelInbox({
                   {thread.conversa.externalUserId}
                 </p>
               </div>
+              <Button
+                size="sm"
+                variant={autopilotAtivo ? 'default' : 'outline'}
+                className="shrink-0 gap-1.5"
+                onClick={() => void aplicarAutopilot(!autopilotAtivo)}
+                disabled={togglando}
+                title={
+                  autopilotAtivo
+                    ? 'Desligar o piloto automático'
+                    : 'Ligar o piloto: a IA responde o lead e avisa o CEO'
+                }
+              >
+                {togglando ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Bot className="size-3.5" aria-hidden />
+                )}
+                {autopilotAtivo ? 'Piloto ligado' : 'Piloto automático'}
+              </Button>
             </div>
+
+            {/* Diretriz do piloto + aviso, quando ligado */}
+            {autopilotAtivo ? (
+              <div className="flex flex-col gap-2 border-b border-border bg-primary/5 px-4 py-2.5">
+                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Bot className="size-3.5 shrink-0 text-primary" aria-hidden />
+                  A IA está respondendo este lead e enviando sinais ao CEO, que age no CRM e dispara
+                  pesquisas. Você pode assumir a qualquer momento desligando o piloto.
+                </p>
+                <div className="flex items-end gap-2">
+                  <Textarea
+                    value={instrucao}
+                    onChange={(e) => setInstrucao(e.target.value)}
+                    placeholder="Diretriz para a IA (opcional): tom, limites, desconto máximo, objetivo…"
+                    rows={1}
+                    className="min-h-0 resize-none text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => void aplicarAutopilot(true, true)}
+                    disabled={togglando}
+                  >
+                    Salvar diretriz
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
               {thread.mensagens.map((m) => (
@@ -213,7 +346,13 @@ export function ChannelInbox({
                   )}
                 >
                   {m.texto ?? <span className="italic opacity-70">[{m.tipo}]</span>}
-                  <span className="mt-1 block text-[10px] opacity-60">
+                  <span className="mt-1 flex items-center gap-1 text-[10px] opacity-60">
+                    {m.direction === 'saida' && m.automatica ? (
+                      <>
+                        <Bot className="size-3" aria-hidden />
+                        IA ·
+                      </>
+                    ) : null}
                     {new Date(m.enviadaEm).toLocaleString('pt-BR', {
                       day: '2-digit',
                       month: '2-digit',
@@ -224,6 +363,34 @@ export function ChannelInbox({
                 </div>
               ))}
             </div>
+
+            {/* Painel de sinais detectados pelo piloto + ação do CEO */}
+            {thread.sinais.length > 0 ? (
+              <div className="border-t border-border px-4 py-2.5">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                  <Sparkles className="size-3.5 text-primary" aria-hidden />
+                  Sinais para o CEO
+                </p>
+                <ul className="flex max-h-32 flex-col gap-1.5 overflow-y-auto">
+                  {thread.sinais.slice(0, 8).map((s) => (
+                    <li key={s.id} className="flex items-start gap-2 text-xs">
+                      <SignalStatusIcon status={s.status} />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium text-foreground">
+                          {LEAD_SIGNAL_TIPO_LABELS[s.tipo]}
+                        </span>{' '}
+                        <span className="text-muted-foreground">{s.resumo}</span>
+                        {s.acaoCeo ? (
+                          <span className="mt-0.5 block text-[11px] text-primary/80">
+                            CEO: {s.acaoCeo}
+                          </span>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             {/* Composer: rascunho da IA + envio manual pela plataforma. */}
             <div className="flex flex-col gap-2 border-t border-border px-3 py-3">
@@ -280,4 +447,23 @@ export function ChannelInbox({
       </div>
     </div>
   );
+}
+
+/** Ícone do estado de um sinal (novo/processando/processado/erro). */
+function SignalStatusIcon({ status }: { status: ChannelSignalDTO['status'] }) {
+  if (status === 'processado') {
+    return <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-500" aria-label="processado" />;
+  }
+  if (status === 'processando' || status === 'novo') {
+    return (
+      <Loader2
+        className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground"
+        aria-label="processando"
+      />
+    );
+  }
+  if (status === 'erro') {
+    return <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-500" aria-label="erro" />;
+  }
+  return <Check className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-label={status} />;
 }
