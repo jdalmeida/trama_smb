@@ -45,6 +45,9 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-persona-conteudo: var(--persona-conteudo);
+  --color-persona-mercado: var(--persona-mercado);
+  --color-persona-prospeccao: var(--persona-prospeccao);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -79,6 +82,12 @@
   --border: oklch(0.923 0.003 48.72);
   --input: oklch(0.923 0.003 48.72);
   --ring: oklch(0.606 0.25 292.72);
+  /* Identidade das personas — código de cor (Conteúdo=âmbar, Mercado=azul,
+     Prospecção=verde). Tom de produto: escurecido para ≥4.5:1 em superfície
+     clara. Sempre acompanhado de ícone/rótulo (Regra do Sinal Duplo). */
+  --persona-conteudo: oklch(0.565 0.13 65);
+  --persona-mercado: oklch(0.555 0.15 252);
+  --persona-prospeccao: oklch(0.53 0.125 158);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -114,6 +123,10 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  /* Personas no modo escuro: clareadas para destacar sobre o card escuro. */
+  --persona-conteudo: oklch(0.82 0.13 70);
+  --persona-mercado: oklch(0.78 0.135 250);
+  --persona-prospeccao: oklch(0.82 0.15 155);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -252,8 +265,26 @@
 }
 .tr-footlink:hover { color: #fff; }
 
-/* Respeita usuários que pedem menos movimento. */
+/* ──────────────────────────────────────────────────────────────────────────
+   Acessibilidade: respeita quem pede menos movimento. Vale para o app INTEIRO
+   (console e landing), não só a landing. Animações e transições completam de
+   forma instantânea — o conteúdo termina no estado final visível, nunca em
+   branco — e os loops contínuos param após um ciclo. Zera também os delays para
+   que entradas escalonadas (ex.: stagger do painel "Time") apareçam juntas.
+   ────────────────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Órbitas, brilhos e pulsos da landing são puramente decorativos: remove de
+     vez em vez de deixar um quadro final preso na tela. */
   .trama-landing *,
   .trama-landing *::before,
   .trama-landing *::after {

@@ -45,9 +45,11 @@ export function MemoriesPanel({
     <aside className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2">
         <div className="flex flex-col">
-          <h2 className="text-base font-semibold text-foreground">Memórias</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Perfil do negócio
+          </h2>
           <p className="text-xs text-muted-foreground">
-            O perfil do seu negócio — a base de contexto do seu time.
+            Quem é o seu negócio — a base de contexto que todo o time usa.
           </p>
         </div>
         {profile ? <StatusBadge verified={verified} /> : null}
@@ -61,7 +63,15 @@ export function MemoriesPanel({
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Perfil do Negócio</CardTitle>
+              <CardTitle className="flex items-center gap-2.5">
+                <span
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                  aria-hidden
+                >
+                  <Brain className="size-4" />
+                </span>
+                Perfil do Negócio
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <ProfileFields profile={profile} />

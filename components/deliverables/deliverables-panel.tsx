@@ -11,6 +11,7 @@ import {
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import type { DeliverableContent } from '@/src/domain/deliverable';
 import { PERSONAS } from '@/src/agents/registry';
+import { PERSONA_THEME } from '@/components/team/persona-theme';
 import { DeliverableView } from '@/components/deliverable/deliverable-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ const STATUS: Record<
   },
   working: {
     label: 'Trabalhando',
-    className: 'text-amber-600',
+    className: 'text-primary',
     Icon: Loader2,
   },
   done: {
@@ -193,7 +194,14 @@ function EntregavelItem({
             {entregavel.titulo}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-            <span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className={cn(
+                  'size-1.5 shrink-0 rounded-full',
+                  PERSONA_THEME[entregavel.personaId].dot,
+                )}
+                aria-hidden
+              />
               {persona ? `${persona.emoji} ${persona.nome}` : entregavel.personaId}
             </span>
             <span aria-hidden>·</span>

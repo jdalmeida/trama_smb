@@ -3,8 +3,17 @@
 import * as React from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
-import { Brain, KanbanSquare, MessagesSquare, Radio, Sparkles, Users } from 'lucide-react';
-import { FileText } from 'lucide-react';
+import {
+  Brain,
+  FileText,
+  KanbanSquare,
+  MessagesSquare,
+  Radio,
+  Store,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 import type { PersonaId, PersonaStatus } from '@/src/domain/persona';
 import type { BusinessProfile } from '@/src/domain/business-profile';
 import { Chat } from '@/components/chat/chat';
@@ -18,12 +27,32 @@ import {
   ConversationList,
   type Conversa,
 } from '@/components/conversations/conversation-list';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Toaster } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
-/** Visões principais do console (seletor no topo). */
-type MainView = 'chat' | 'canais' | 'entregaveis' | 'artefatos' | 'memorias' | 'crm';
+/**
+ * Visões principais do console. As cinco primeiras vivem no seletor do topo;
+ * 'perfil' (o Perfil do Negócio) é acessível pelo menu do usuário, no header —
+ * é contexto/configuração, não uma visão de trabalho do dia a dia.
+ * O id 'perfil' renderiza o MemoriesPanel.
+ */
+type MainView = 'chat' | 'canais' | 'crm' | 'entregaveis' | 'memoria' | 'perfil';
+
+/**
+ * Destinos do seletor principal. Renderizados como segmented control no topo
+ * (desktop) e como barra de navegação inferior (mobile). 'perfil' fica fora —
+ * vive no menu do usuário, no header.
+ */
+const MAIN_VIEWS: { id: MainView; label: string; Icon: LucideIcon }[] = [
+  { id: 'chat', label: 'Chat', Icon: MessagesSquare },
+  { id: 'canais', label: 'Canais', Icon: Radio },
+  { id: 'crm', label: 'CRM', Icon: KanbanSquare },
+  { id: 'entregaveis', label: 'Entregáveis', Icon: FileText },
+  { id: 'memoria', label: 'Memória', Icon: Brain },
+];
 
 export function Console() {
   // Conversa ativa: um ref (lido pelo transport) + um state (dispara render).
@@ -168,99 +197,206 @@ export function Console() {
   );
 
   // Visão principal: o chat (com a sidebar de conversas/time) ou uma página
-  // full-width de Entregáveis/Artefatos — mais larga e fácil de ler.
+  // full-width (CRM, Canais, Entregáveis, Memória ou Perfil).
   const [mainView, setMainView] = React.useState<MainView>('chat');
+  const verPerfil = mainView === 'perfil';
+
+  // Mobile: a sidebar de Conversas/Time não cabe ao lado do chat, então no
+  // celular elas viram abas em tela cheia. 'mobilePane' decide o que ocupa a
+  // tela; 'sidebarTab' é compartilhada com as abas do desktop.
+  const [mobilePane, setMobilePane] = React.useState<'conversa' | 'sidebar'>(
+    'conversa',
+  );
+  const [sidebarTab, setSidebarTab] = React.useState<'conversas' | 'time'>(
+    'conversas',
+  );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <ViewSwitcher view={mainView} onChange={setMainView} />
-
-      {mainView === 'chat' ? (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
-          {/* Chat ocupa o espaço principal */}
-          <section className="flex min-h-0 flex-col rounded-xl border border-border bg-background p-4 shadow-sm">
-            <Chat
-              messages={messages}
-              sendMessage={sendMessage}
-              status={status}
-              carregandoHistorico={carregandoHistorico}
-              perfilVerificado={perfil.verified}
-              onConfirmarPerfil={perfil.confirmar}
-            />
-          </section>
-
-          {/* Sidebar: conversas + time */}
-          <aside className="flex min-h-0 flex-col">
-            <Tabs
-              defaultValue="conversas"
-              className="flex min-h-0 flex-1 flex-col"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="conversas" className="gap-1.5">
-                  <MessagesSquare className="size-3.5" aria-hidden />
-                  Conversas
-                </TabsTrigger>
-                <TabsTrigger value="time" className="gap-1.5">
-                  <Users className="size-3.5" aria-hidden />
-                  Time
-                </TabsTrigger>
-              </TabsList>
-
-              <div className="mt-3 min-h-0 flex-1 rounded-xl border border-border bg-background p-3 shadow-sm">
-                <TabsContent value="conversas" className="mt-0 h-full">
-                  <ConversationList
-                    conversas={conversas}
-                    activeId={activeId}
-                    carregando={carregandoConversas}
-                    onSelect={(id) => void selecionar(id)}
-                    onNew={() => void novaConversa()}
-                    onRename={(id, t) => void renomear(id, t)}
-                    onDelete={(id) => void apagar(id)}
-                  />
-                </TabsContent>
-                <TabsContent value="time" className="mt-0 h-full overflow-y-auto">
-                  <TeamPanel runs={runs} />
-                </TabsContent>
-              </div>
-            </Tabs>
-          </aside>
-        </div>
-      ) : mainView === 'crm' ? (
-        // CRM: full-width de verdade (o kanban precisa de espaço horizontal).
-        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
-          <CrmPanel />
-        </section>
-      ) : mainView === 'canais' ? (
-        // Canais: full-width (inbox + thread precisam de espaço horizontal).
-        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
-          <ChannelsPanel />
-        </section>
-      ) : (
-        // Página full-width (Entregáveis, Artefatos ou Memórias), em coluna legível.
-        <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background p-4 shadow-sm sm:p-6">
-          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
-            {mainView === 'entregaveis' ? (
-              <DeliverablesPanel />
-            ) : mainView === 'artefatos' ? (
-              <ArtifactsPanel />
-            ) : (
-              <MemoriesPanel
-                profile={perfil.profile}
-                verified={perfil.verified}
-                carregando={perfil.carregando}
-                onConfirmar={perfil.confirmar}
-              />
-            )}
+    <main className="flex h-screen flex-col bg-background">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
+        <div className="mx-auto flex h-14 w-full max-w-[100rem] items-center justify-between px-4 sm:px-6">
+          <div className="flex h-6 items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl" aria-hidden>
+                🧵
+              </span>
+              <span className="text-lg font-semibold tracking-tight text-foreground">
+                Trama
+              </span>
+            </div>
+            <Separator orientation="vertical" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">
+              Seu time de agentes
+            </span>
           </div>
-        </section>
-      )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant={verPerfil ? 'secondary' : 'ghost'}
+              size="sm"
+              className="gap-1.5"
+              aria-pressed={verPerfil}
+              onClick={() => setMainView(verPerfil ? 'chat' : 'perfil')}
+            >
+              <Store className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Perfil do negócio</span>
+            </Button>
+            <UserButton />
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto flex min-h-0 w-full max-w-[100rem] flex-1 flex-col px-4 py-4 sm:px-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <ViewSwitcher view={mainView} onChange={setMainView} />
+
+          {mainView === 'chat' ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              {/* Mobile: a sidebar não cabe ao lado do chat, então Conversa,
+                  Conversas e Time viram abas em tela cheia. No desktop esta
+                  sub-nav some e tudo aparece lado a lado. */}
+              <div
+                role="group"
+                aria-label="Visão do chat"
+                className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/40 p-1 lg:hidden"
+              >
+                <ChatPaneTab
+                  active={mobilePane === 'conversa'}
+                  onClick={() => setMobilePane('conversa')}
+                  Icon={MessagesSquare}
+                  label="Conversa"
+                />
+                <ChatPaneTab
+                  active={mobilePane === 'sidebar' && sidebarTab === 'conversas'}
+                  onClick={() => {
+                    setMobilePane('sidebar');
+                    setSidebarTab('conversas');
+                  }}
+                  Icon={MessagesSquare}
+                  label="Conversas"
+                />
+                <ChatPaneTab
+                  active={mobilePane === 'sidebar' && sidebarTab === 'time'}
+                  onClick={() => {
+                    setMobilePane('sidebar');
+                    setSidebarTab('time');
+                  }}
+                  Icon={Users}
+                  label="Time"
+                />
+              </div>
+
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
+                {/* Chat ocupa o espaço principal (escondido no mobile quando a
+                    sub-nav está na sidebar). */}
+                <section
+                  className={cn(
+                    'min-h-0 flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10',
+                    mobilePane === 'conversa' ? 'flex' : 'hidden lg:flex',
+                  )}
+                >
+                  <Chat
+                    messages={messages}
+                    sendMessage={sendMessage}
+                    status={status}
+                    carregandoHistorico={carregandoHistorico}
+                    perfilVerificado={perfil.verified}
+                    onConfirmarPerfil={perfil.confirmar}
+                  />
+                </section>
+
+                {/* Sidebar: abas Conversas/Time no desktop; no mobile a sub-nav
+                    acima controla qual painel aparece (Tabs controlado). */}
+                <aside
+                  className={cn(
+                    'min-h-0 flex-col',
+                    mobilePane === 'sidebar' ? 'flex' : 'hidden lg:flex',
+                  )}
+                >
+                  <Tabs
+                    value={sidebarTab}
+                    onValueChange={(v) =>
+                      setSidebarTab(v as 'conversas' | 'time')
+                    }
+                    className="flex min-h-0 flex-1 flex-col"
+                  >
+                    <TabsList className="hidden w-full lg:inline-flex">
+                      <TabsTrigger value="conversas" className="gap-1.5">
+                        <MessagesSquare className="size-3.5" aria-hidden />
+                        Conversas
+                      </TabsTrigger>
+                      <TabsTrigger value="time" className="gap-1.5">
+                        <Users className="size-3.5" aria-hidden />
+                        Time
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <div className="min-h-0 flex-1 rounded-xl bg-card p-3 ring-1 ring-foreground/10 lg:mt-3">
+                      <TabsContent value="conversas" className="mt-0 h-full">
+                        <ConversationList
+                          conversas={conversas}
+                          activeId={activeId}
+                          carregando={carregandoConversas}
+                          onSelect={(id) => void selecionar(id)}
+                          onNew={() => void novaConversa()}
+                          onRename={(id, t) => void renomear(id, t)}
+                          onDelete={(id) => void apagar(id)}
+                        />
+                      </TabsContent>
+                      <TabsContent
+                        value="time"
+                        className="mt-0 h-full overflow-y-auto"
+                      >
+                        <TeamPanel runs={runs} />
+                      </TabsContent>
+                    </div>
+                  </Tabs>
+                </aside>
+              </div>
+            </div>
+          ) : mainView === 'crm' ? (
+            // CRM: full-width de verdade (o kanban precisa de espaço horizontal).
+            <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-6">
+              <CrmPanel />
+            </section>
+          ) : mainView === 'canais' ? (
+            // Canais: full-width (inbox + thread precisam de espaço horizontal).
+            <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-6">
+              <ChannelsPanel />
+            </section>
+          ) : (
+            // Página full-width (Entregáveis, Memória ou Perfil), em coluna legível.
+            <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-6">
+              <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
+                {mainView === 'entregaveis' ? (
+                  <DeliverablesPanel />
+                ) : mainView === 'memoria' ? (
+                  <ArtifactsPanel />
+                ) : (
+                  <MemoriesPanel
+                    profile={perfil.profile}
+                    verified={perfil.verified}
+                    carregando={perfil.carregando}
+                    onConfirmar={perfil.confirmar}
+                  />
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+
+      <BottomNav view={mainView} onChange={setMainView} />
 
       <Toaster />
-    </div>
+    </main>
   );
 }
 
-/** Seletor da visão principal: Chat · CRM · Entregáveis · Artefatos · Memórias. */
+/**
+ * Seletor da visão principal (desktop): segmented control no topo.
+ * No mobile some — a navegação vira a barra inferior (BottomNav).
+ */
 function ViewSwitcher({
   view,
   onChange,
@@ -268,17 +404,9 @@ function ViewSwitcher({
   view: MainView;
   onChange: (v: MainView) => void;
 }) {
-  const itens = [
-    { id: 'chat' as const, label: 'Chat', Icon: MessagesSquare },
-    { id: 'canais' as const, label: 'Canais', Icon: Radio },
-    { id: 'crm' as const, label: 'CRM', Icon: KanbanSquare },
-    { id: 'entregaveis' as const, label: 'Entregáveis', Icon: FileText },
-    { id: 'artefatos' as const, label: 'Artefatos', Icon: Sparkles },
-    { id: 'memorias' as const, label: 'Memórias', Icon: Brain },
-  ];
   return (
-    <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
-      {itens.map(({ id, label, Icon }) => (
+    <div className="hidden w-fit items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 md:inline-flex">
+      {MAIN_VIEWS.map(({ id, label, Icon }) => (
         <button
           key={id}
           type="button"
@@ -296,6 +424,78 @@ function ViewSwitcher({
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Navegação principal no mobile: barra inferior thumb-first. No fluxo da coluna
+ * (o <main> é h-screen), então fica colada na base sem position fixed; respeita
+ * o safe-area-inset dos aparelhos com home indicator.
+ */
+function BottomNav({
+  view,
+  onChange,
+}: {
+  view: MainView;
+  onChange: (v: MainView) => void;
+}) {
+  return (
+    <nav
+      aria-label="Navegação principal"
+      className="grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {MAIN_VIEWS.map(({ id, label, Icon }) => {
+        const active = view === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            aria-pressed={active}
+            className={cn(
+              'flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
+              active
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="size-5" aria-hidden />
+            {label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Botão da sub-nav do chat no mobile (Conversa · Conversas · Time). */
+function ChatPaneTab({
+  active,
+  onClick,
+  Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors',
+        active
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      <Icon className="size-4" aria-hidden />
+      {label}
+    </button>
   );
 }
 
@@ -327,7 +527,7 @@ function useConversas() {
 /**
  * Estado do Perfil do Negócio (a "memória" do negócio): conteúdo + se já foi
  * verificado pelo dono. É a fonte única que decide se o card de confirmação
- * aparece no chat e o que a aba "Memórias" exibe.
+ * aparece no chat e o que a aba "Perfil do negócio" exibe.
  */
 function usePerfilNegocio() {
   const [profile, setProfile] = React.useState<BusinessProfile | null>(null);

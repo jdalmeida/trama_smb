@@ -66,18 +66,22 @@ function nomeAutor(autor: ArtifactAutor): string {
 function formatarData(iso: string): string {
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return '';
+  // Mostra o ano só quando não é o ano corrente — evita datas ambíguas
+  // entre anos sem poluir o caso comum (registros recentes).
+  const mesmoAno = data.getFullYear() === new Date().getFullYear();
   return data.toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'short',
+    year: mesmoAno ? undefined : 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
 /**
- * Painel "Artefatos": a memória da empresa, agora editável. Lista, cria, edita,
- * apaga e melhora com IA os artefatos (notas, pesquisas, decisões, referências).
- * Substitui a antiga aba "Memória" (read-only e com overflow de texto).
+ * Painel "Memória" (a memória da empresa, editável): lista, cria, edita, apaga e
+ * melhora com IA os registros (notas, pesquisas, decisões, referências).
+ * Internamente os registros são "artefatos" (tipo/API `/api/artifacts`).
  */
 export function ArtifactsPanel() {
   const { artefatos, carregando, refresh } = useArtefatos();
@@ -109,7 +113,7 @@ export function ArtifactsPanel() {
     <aside className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-col">
-          <h2 className="text-base font-semibold text-foreground">Artefatos</h2>
+          <h2 className="text-base font-semibold text-foreground">Memória</h2>
           <p className="text-xs text-muted-foreground">
             A memória da empresa — notas, pesquisas, decisões e referências.
           </p>
@@ -189,7 +193,7 @@ function ArtefatoCard({
           type="button"
           onClick={onEdit}
           className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
-          aria-label="Editar artefato"
+          aria-label="Editar registro"
         >
           <Pencil className="size-3.5" />
         </button>
@@ -203,7 +207,8 @@ function ArtefatoCard({
                 <Badge
                   key={tag}
                   variant="outline"
-                  className="text-[10px] text-muted-foreground"
+                  className="max-w-[12rem] truncate text-[10px] text-muted-foreground"
+                  title={tag}
                 >
                   {tag}
                 </Badge>
@@ -247,10 +252,16 @@ function ArtifactEditor({
 
   const editando = artefato !== null;
 
+  // Aborta um streaming de melhoria em andamento se o editor desmontar
+  // (ex.: clicar em "Voltar"), evitando atualizar o estado de um componente
+  // que já saiu da tela e o toast de erro de um cancelamento intencional.
+  const abortRef = React.useRef<AbortController | null>(null);
+  React.useEffect(() => () => abortRef.current?.abort(), []);
+
   async function salvar() {
     const t = titulo.trim();
     if (!t) {
-      toast({ title: 'Dê um título ao artefato' });
+      toast({ title: 'Dê um título ao registro' });
       return;
     }
     setSalvando(true);
@@ -276,7 +287,7 @@ function ArtifactEditor({
             body: JSON.stringify(corpo),
           });
       if (!res.ok) throw new Error();
-      toast({ variant: 'success', title: 'Artefato salvo' });
+      toast({ variant: 'success', title: 'Registro salvo' });
       onSaved();
     } catch {
       toast({ title: 'Não foi possível salvar' });
@@ -287,13 +298,13 @@ function ArtifactEditor({
 
   async function apagar() {
     if (!editando) return;
-    if (!confirm('Apagar este artefato?')) return;
+    if (!confirm('Apagar este registro?')) return;
     try {
       const res = await fetch(`/api/artifacts/${artefato.id}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error();
-      toast({ title: 'Artefato apagado' });
+      toast({ title: 'Registro apagado' });
       onDeleted();
     } catch {
       toast({ title: 'Não foi possível apagar' });
@@ -305,6 +316,10 @@ function ArtifactEditor({
       toast({ title: 'Escreva algo antes de melhorar' });
       return;
     }
+    // Cancela uma melhoria anterior ainda em andamento antes de abrir a nova.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setMelhorando(true);
     setSugestao('');
     try {
@@ -312,6 +327,7 @@ function ArtifactEditor({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ titulo, categoria, conteudo }),
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) throw new Error();
       const reader = res.body.getReader();
@@ -324,10 +340,12 @@ function ArtifactEditor({
         setSugestao(acc);
       }
     } catch {
+      // Abortado (editor fechado / nova melhoria) não é erro a reportar.
+      if (controller.signal.aborted) return;
       toast({ title: 'A melhoria com IA falhou' });
       setSugestao(null);
     } finally {
-      setMelhorando(false);
+      if (!controller.signal.aborted) setMelhorando(false);
     }
   }
 
@@ -344,7 +362,7 @@ function ArtifactEditor({
           Voltar
         </Button>
         <span className="text-sm font-semibold text-foreground">
-          {editando ? 'Editar artefato' : 'Novo artefato'}
+          {editando ? 'Editar registro' : 'Novo registro'}
         </span>
       </div>
 
@@ -355,6 +373,7 @@ function ArtifactEditor({
             onChange={(e) => setTitulo(e.target.value)}
             placeholder="Título"
             aria-label="Título"
+            maxLength={120}
           />
 
           <div className="flex flex-wrap gap-1">
@@ -380,6 +399,7 @@ function ArtifactEditor({
             onChange={(e) => setTags(e.target.value)}
             placeholder="Tags (separadas por vírgula)"
             aria-label="Tags"
+            maxLength={200}
           />
 
           <Textarea
@@ -487,10 +507,34 @@ function useArtefatos(): {
     }
   }, []);
 
+  // Poll a cada 15s, mas pausado enquanto a aba está oculta — não faz sentido
+  // bater na API com a janela em segundo plano; ao voltar, atualiza na hora.
   React.useEffect(() => {
+    let id: ReturnType<typeof setInterval> | null = null;
+    const parar = () => {
+      if (id != null) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+    const iniciar = () => {
+      if (id == null) id = setInterval(() => void refresh(), 15000);
+    };
+    const aoMudarVisibilidade = () => {
+      if (document.hidden) {
+        parar();
+      } else {
+        void refresh();
+        iniciar();
+      }
+    };
     void refresh();
-    const id = setInterval(() => void refresh(), 15000);
-    return () => clearInterval(id);
+    iniciar();
+    document.addEventListener('visibilitychange', aoMudarVisibilidade);
+    return () => {
+      parar();
+      document.removeEventListener('visibilitychange', aoMudarVisibilidade);
+    };
   }, [refresh]);
 
   return { artefatos, carregando, refresh };
@@ -510,13 +554,13 @@ function EstadoVazio({ onNovo }: { onNovo: () => void }) {
           A memória ainda está vazia
         </p>
         <p className="text-xs text-muted-foreground">
-          Crie um artefato ou deixe o time alimentar com notas, pesquisas e
+          Crie um registro ou deixe o time alimentar com notas, pesquisas e
           decisões.
         </p>
       </div>
       <Button variant="outline" size="sm" className="gap-1.5" onClick={onNovo}>
         <Plus className="size-3.5" aria-hidden />
-        Criar artefato
+        Criar registro
       </Button>
     </div>
   );

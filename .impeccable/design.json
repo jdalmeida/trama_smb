@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-18T20:30:00.000Z",
+  "title": "Design System: Trama",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Violeta Trama", "canonical": "oklch(0.491 0.27 292.58)", "tonalRamp": ["oklch(0.20 0.12 292.58)", "oklch(0.29 0.18 292.58)", "oklch(0.38 0.24 292.58)", "oklch(0.49 0.27 292.58)", "oklch(0.60 0.25 292.58)", "oklch(0.70 0.18 293.5)", "oklch(0.82 0.10 294.6)", "oklch(0.94 0.03 294.6)"] },
+      "ink": { "role": "neutral", "displayName": "Tinta Quente", "canonical": "oklch(0.216 0.006 56.04)", "tonalRamp": ["oklch(0.16 0.006 56)", "oklch(0.22 0.006 56)", "oklch(0.30 0.006 56)", "oklch(0.40 0.005 56)", "oklch(0.52 0.004 56)", "oklch(0.66 0.003 56)", "oklch(0.80 0.003 56)", "oklch(0.92 0.003 49)"] },
+      "canvas": { "role": "neutral", "displayName": "Quase-Branco", "canonical": "oklch(0.985 0.002 106.42)", "tonalRamp": ["oklch(0.20 0.004 106)", "oklch(0.34 0.004 106)", "oklch(0.50 0.003 106)", "oklch(0.66 0.002 106)", "oklch(0.80 0.002 106)", "oklch(0.90 0.002 106)", "oklch(0.96 0.002 106)", "oklch(0.985 0.002 106)"] },
+      "destructive": { "role": "tertiary", "displayName": "Vermelho Alerta", "canonical": "oklch(0.577 0.245 27.325)", "tonalRamp": ["oklch(0.25 0.10 27)", "oklch(0.34 0.15 27)", "oklch(0.44 0.20 27)", "oklch(0.58 0.245 27)", "oklch(0.68 0.21 22)", "oklch(0.78 0.15 22)", "oklch(0.88 0.08 22)", "oklch(0.95 0.03 22)"] },
+      "persona-conteudo": { "role": "tertiary", "displayName": "Âmbar Conteúdo", "canonical": "#fbbf77", "tonalRamp": ["#3a2a12", "#5c421c", "#85602a", "#b3853c", "#d8a258", "#fbbf77", "#fdd5a3", "#fee9cf"] },
+      "persona-mercado": { "role": "tertiary", "displayName": "Azul Mercado", "canonical": "#7cc4ff", "tonalRamp": ["#0d2740", "#143a5e", "#1d5286", "#2a72b8", "#4f9ce0", "#7cc4ff", "#a8daff", "#d3edff"] },
+      "persona-prospeccao": { "role": "tertiary", "displayName": "Verde Prospecção", "canonical": "#86efac", "tonalRamp": ["#0f2e1c", "#16462a", "#1f633c", "#2c8a52", "#4fc079", "#86efac", "#b0f5c9", "#d8fae4"] },
+      "persona-conteudo-ink": { "role": "tertiary", "displayName": "Âmbar Conteúdo (produto)", "canonical": "oklch(0.565 0.13 65)", "tonalRamp": ["oklch(0.30 0.07 65)", "oklch(0.38 0.09 65)", "oklch(0.46 0.11 65)", "oklch(0.565 0.13 65)", "oklch(0.66 0.13 67)", "oklch(0.76 0.11 70)", "oklch(0.86 0.08 72)", "oklch(0.94 0.04 75)"] },
+      "persona-mercado-ink": { "role": "tertiary", "displayName": "Azul Mercado (produto)", "canonical": "oklch(0.555 0.15 252)", "tonalRamp": ["oklch(0.30 0.09 252)", "oklch(0.38 0.11 252)", "oklch(0.46 0.13 252)", "oklch(0.555 0.15 252)", "oklch(0.66 0.14 251)", "oklch(0.76 0.12 250)", "oklch(0.86 0.08 250)", "oklch(0.94 0.04 250)"] },
+      "persona-prospeccao-ink": { "role": "tertiary", "displayName": "Verde Prospecção (produto)", "canonical": "oklch(0.53 0.125 158)", "tonalRamp": ["oklch(0.30 0.07 158)", "oklch(0.38 0.09 158)", "oklch(0.46 0.11 158)", "oklch(0.53 0.125 158)", "oklch(0.64 0.13 156)", "oklch(0.75 0.12 155)", "oklch(0.85 0.08 154)", "oklch(0.93 0.04 154)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Apenas o herói da landing. Geist 800, teto ~68px, balanceado." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de seção e de painéis no console." },
+      "title": { "displayName": "Title", "purpose": "Títulos de card e cabeçalhos de bloco." },
+      "body": { "displayName": "Body", "purpose": "Texto-base do app, 14px; 65–75ch em prosa longa." },
+      "label": { "displayName": "Label/Mono", "purpose": "Geist Mono em rótulos técnicos curtos, status e metadados." }
+    },
+    "shadows": [
+      { "name": "aro-hairline", "value": "0 0 0 1px oklch(0.216 0.006 56.04 / 0.1)", "purpose": "Separação padrão de cards e superfícies no console (ring de 1px, não sombra projetada)." },
+      { "name": "elevacao-estado", "value": "0 1px 2px 0 oklch(0.216 0.006 56.04 / 0.05)", "purpose": "Aba/segmento ativo; o mínimo para levantar do trilho (shadow-sm)." },
+      { "name": "brilho-marca", "value": "0 0 64px -10px oklch(0.491 0.27 292.58 / 0.75)", "purpose": "Atmosfera roxa da landing, sob o núcleo CEO e personas. Nunca no produto." }
+    ],
+    "motion": [
+      { "name": "transition-padrao", "value": "150ms ease", "purpose": "Cor/borda em links, botões e abas (hover/focus)." },
+      { "name": "ease-out-suave", "value": "200ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entradas e transforms da landing (subir/flutuar)." },
+      { "name": "tr-up", "value": "0.6s ease — translateY(22px)→0, opacity 0→1", "purpose": "Entrada escalonada dos blocos da landing." },
+      { "name": "tr-float", "value": "5s ease-in-out infinite — translateY(0/-8px)", "purpose": "Flutuação das personas em órbita." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "content-max", "value": "1600px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA do sistema. Roxo, compacto, com afundamento tátil no active.",
+      "html": "<button class=\"ds-btn-primary\">Montar meu time</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; gap: 6px; background: var(--primary, oklch(0.491 0.27 292.58)); color: var(--primary-foreground, oklch(0.985 0 0)); border: 1px solid transparent; border-radius: 10px; font: 500 0.875rem Geist, ui-sans-serif, system-ui, sans-serif; transition: background .15s ease, transform .1s ease; } .ds-btn-primary:hover { background: oklch(0.491 0.27 292.58 / 0.8); } .ds-btn-primary:focus-visible { outline: none; border-color: var(--ring, oklch(0.606 0.25 292.72)); box-shadow: 0 0 0 3px oklch(0.606 0.25 292.72 / 0.5); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Ação secundária discreta sobre o canvas.",
+      "html": "<button class=\"ds-btn-outline\">Ver como funciona</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; gap: 6px; background: var(--background, oklch(0.985 0.002 106.42)); color: var(--foreground, oklch(0.216 0.006 56.04)); border: 1px solid var(--border, oklch(0.923 0.003 48.72)); border-radius: 10px; font: 500 0.875rem Geist, ui-sans-serif, system-ui, sans-serif; transition: background .15s ease; } .ds-btn-outline:hover { background: var(--muted, oklch(0.97 0 0)); } .ds-btn-outline:focus-visible { outline: none; border-color: var(--ring, oklch(0.606 0.25 292.72)); box-shadow: 0 0 0 3px oklch(0.606 0.25 292.72 / 0.5); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Superfície branca flutuando sobre o canvas; aro fino no lugar de sombra.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Plano de conteúdo</div><div class=\"ds-card-desc\">Pronto para revisar — 8 ideias para a próxima semana.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: var(--card, oklch(1 0 0)); color: var(--card-foreground, oklch(0.216 0.006 56.04)); border-radius: 14px; box-shadow: 0 0 0 1px oklch(0.216 0.006 56.04 / 0.1); } .ds-card-title { font: 500 1rem Geist, ui-sans-serif, system-ui, sans-serif; line-height: 1.35; } .ds-card-desc { font: 400 0.875rem Geist, ui-sans-serif, system-ui, sans-serif; color: var(--muted-foreground, oklch(0.556 0 0)); line-height: 1.55; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto compacto; foco por borda + anel, sem glow.",
+      "html": "<input class=\"ds-input\" placeholder=\"Conte sobre o seu negócio…\" />",
+      "css": ".ds-input { height: 32px; width: 100%; padding: 4px 10px; background: transparent; color: var(--foreground, oklch(0.216 0.006 56.04)); border: 1px solid var(--input, oklch(0.923 0.003 48.72)); border-radius: 10px; font: 400 0.875rem Geist, ui-sans-serif, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; } .ds-input::placeholder { color: var(--muted-foreground, oklch(0.556 0 0)); } .ds-input:focus-visible { outline: none; border-color: var(--ring, oklch(0.606 0.25 292.72)); box-shadow: 0 0 0 3px oklch(0.606 0.25 292.72 / 0.5); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Pílula de status/contagem; quando codifica persona, acompanha ícone.",
+      "html": "<span class=\"ds-badge\">Trabalhando</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 2px 8px; background: var(--primary, oklch(0.491 0.27 292.58)); color: var(--primary-foreground, oklch(0.985 0 0)); border: 1px solid transparent; border-radius: 9999px; font: 500 0.75rem Geist, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tabs-trigger-active",
+      "description": "Navegação por abas; trilho cinza, aba ativa em branco com elevação mínima.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab is-active\">Time</button><button class=\"ds-tab\">CRM</button><button class=\"ds-tab\">Canais</button></div>",
+      "css": ".ds-tabs { display: inline-flex; align-items: center; gap: 0; padding: 3px; height: 32px; background: var(--muted, oklch(0.97 0 0)); border-radius: 10px; } .ds-tab { display: inline-flex; align-items: center; justify-content: center; height: 100%; padding: 0 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: color-mix(in oklch, var(--foreground, oklch(0.216 0.006 56.04)) 60%, transparent); font: 500 0.875rem Geist, ui-sans-serif, system-ui, sans-serif; transition: color .15s ease; cursor: pointer; } .ds-tab:hover { color: var(--foreground, oklch(0.216 0.006 56.04)); } .ds-tab.is-active { background: var(--background, oklch(1 0 0)); color: var(--foreground, oklch(0.216 0.006 56.04)); box-shadow: 0 1px 2px 0 oklch(0.216 0.006 56.04 / 0.05); }"
+    },
+    {
+      "name": "Persona Chip",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Sinal de persona com cor + ícone + rótulo (Regra do Sinal Duplo). No produto usa o tom -ink (≥4.5:1 sobre superfície clara), não o pastel da landing.",
+      "html": "<span class=\"ds-persona\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20h9\"/><path d=\"M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/></svg>Conteúdo</span>",
+      "css": ".ds-persona { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 9999px; background: color-mix(in oklch, oklch(0.565 0.13 65) 12%, transparent); border: 1px solid color-mix(in oklch, oklch(0.565 0.13 65) 40%, transparent); color: oklch(0.565 0.13 65); font: 500 0.75rem Geist, ui-sans-serif, system-ui, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Mesa do Sócio",
+    "overview": "O Trama é a mesa de trabalho de um sócio experiente que torce por você. Nada na tela intimida, nada exige manual; você senta, conversa em português comum e o trabalho aparece resolvido. O sistema visual existe para sumir — o protagonista é o negócio do usuário e o time de agentes trabalhando à vista. Há duas superfícies: o console (produto) é luz, calma e precisão — fundo quase-branco, branco puro nos cards, aros finos no lugar de sombras, roxo reservado; a landing (marca) é noite roxo-profunda, fios em órbita e brilhos sutis, a metáfora têxtil da trama tornada visível sem virar mais-um-SaaS-de-IA.",
+    "keyCharacteristics": [
+      "Plano por padrão: aros de 1px (hairline) carregam separação, não sombras.",
+      "Um roxo só, usado com parcimônia — ação, foco e marca; nunca preenchimento decorativo.",
+      "Tipografia única (Geist) em pesos variados faz toda a hierarquia; mono só em detalhes técnicos.",
+      "Cor é código semântico (personas âmbar/azul/verde), nunca o único sinal.",
+      "Console = luz e calma; landing = noite e brilho. Mesma marca, dois registros."
+    ],
+    "rules": [
+      { "name": "A Regra do Roxo Raro", "body": "O Violeta Trama ocupa ≤10% de qualquer tela do console. Ele marca ação e foco; quando aparece em tudo, deixa de significar algo.", "section": "colors" },
+      { "name": "A Regra do Sinal Duplo", "body": "Toda cor que comunica estado (persona, status, sucesso/erro) vem com ícone e/ou rótulo. Cor é reforço, nunca o único portador da informação.", "section": "colors" },
+      { "name": "A Regra da Família Única", "body": "Toda hierarquia sai de Geist em pesos diferentes. Não introduzir uma segunda sans parecida; use peso, tamanho ou Geist Mono para o registro técnico.", "section": "typography" },
+      { "name": "A Regra do Plano-por-Padrão", "body": "Superfícies do console são planas em repouso. Aro fino para separar; sombra só como resposta a estado (hover, foco, ativo).", "section": "elevation" },
+      { "name": "A Regra do Brilho Confinado", "body": "Glow e backdrop-filter pertencem à landing. No produto, glassmorphism é proibido.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do manter a Regra do Roxo Raro: Violeta Trama em ≤10% da tela, só em ação/foco/marca.",
+      "Do separar superfícies com aro de 1px (ring-1 ring-foreground/10) e camadas tonais; sombra só como resposta a estado.",
+      "Do carregar hierarquia com peso e tamanho de Geist; usar Geist Mono apenas em rótulos técnicos curtos.",
+      "Do acompanhar toda cor de estado/persona com ícone e/ou rótulo (Regra do Sinal Duplo).",
+      "Do escrever rótulos na língua do dono ('seu time', 'ver entregável'), nunca termos de máquina.",
+      "Do garantir contraste AA: texto de corpo ≥4.5:1, incluindo placeholders.",
+      "Do oferecer alternativa em prefers-reduced-motion para toda animação."
+    ],
+    "donts": [
+      "Don't transformar o Trama em dashboard corporativo frio: denso, cinza, intimidador.",
+      "Don't cair no SaaS de IA genérico: roxo-gradiente clichê, hero-metric template, grids de cards idênticos.",
+      "Don't usar gradient text (background-clip: text sobre gradiente); proibido no console — o uso na landing é dívida legada.",
+      "Don't usar glassmorphism como recurso de UI no produto; glow e backdrop-filter ficam confinados à landing.",
+      "Don't usar faixa lateral colorida (border-left/right >1px) em cards, alertas ou listas.",
+      "Don't aninhar cards nem repetir grids de cards idênticos como estrutura padrão.",
+      "Don't expor jargão técnico nem exigir conhecimento de engenharia para usar qualquer tela.",
+      "Don't infantilizar: nada de excesso de mascotes, emojis ou pastel que mine a credibilidade."
+    ]
+  }
+}
