@@ -70,6 +70,8 @@ function toConversation(r: ConversationRow): ConversationDTO {
     cardId: r.cardId,
     status: r.status,
     naoLidas: r.naoLidas,
+    autopilot: r.autopilot,
+    autopilotInstrucao: r.autopilotInstrucao,
     ultimaPrevia: r.ultimaPrevia,
     ultimaMensagemEm: r.ultimaMensagemEm ? r.ultimaMensagemEm.toISOString() : null,
     criadoEm: r.createdAt.toISOString(),
@@ -84,6 +86,7 @@ function toMessage(r: MessageRow): ChannelMessageDTO {
     tipo: r.tipo,
     texto: r.texto,
     status: r.status,
+    automatica: r.automatica,
     anexos: r.anexos,
     enviadaEm: r.enviadaEm.toISOString(),
     criadoEm: r.createdAt.toISOString(),
@@ -284,6 +287,7 @@ export async function enviarMensagem(
   businessId: string,
   conversationId: string,
   texto: string,
+  opts?: { automatica?: boolean },
 ): Promise<{ conversationId: string } | null> {
   const db = getDb();
   const rows = await db
@@ -337,7 +341,7 @@ export async function enviarMensagem(
     );
   }
 
-  return ingestMensagem({
+  const r = await ingestMensagem({
     platform: conn.platform,
     connectionExternalId: conn.externalId,
     externalUserId: conv.externalUserId,
@@ -349,7 +353,9 @@ export async function enviarMensagem(
     enviadaEm: Date.now(),
     direction: 'saida',
     historico: false,
+    automatica: opts?.automatica ?? false,
   });
+  return r ? { conversationId: r.conversationId } : null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -371,9 +377,19 @@ export async function enviarMensagem(
  * Retorna null silenciosamente quando a conexão não existe (mensagem para uma
  * conta que este app não gerencia) — o webhook responde 200 mesmo assim.
  */
+export interface IngestResultado {
+  conversationId: string;
+  businessId: string;
+  /**
+   * Esta é uma entrada ao vivo do lead numa conversa com o piloto automático
+   * ligado: o chamador (webhook/simulação) deve acionar o agente de atendimento.
+   */
+  autopilotPendente: boolean;
+}
+
 export async function ingestMensagem(
   msg: NormalizedMessage,
-): Promise<{ conversationId: string } | null> {
+): Promise<IngestResultado | null> {
   const db = getDb();
 
   const conexao = await db
@@ -412,7 +428,9 @@ export async function ingestMensagem(
       .limit(1);
     if (jaExiste[0]) {
       const conv = await acharConversa(businessId, connectionId, msg.externalUserId);
-      return conv ? { conversationId: conv } : null;
+      return conv
+        ? { conversationId: conv, businessId, autopilotPendente: false }
+        : null;
     }
   }
 
@@ -427,6 +445,7 @@ export async function ingestMensagem(
     tipo: msg.tipo,
     texto: msg.texto,
     anexos: msg.anexos,
+    automatica: msg.automatica ?? false,
     externalMessageId: msg.externalMessageId || null,
     enviadaEm,
   });
@@ -450,7 +469,18 @@ export async function ingestMensagem(
     })
     .where(eq(channelConversations.id, conversationId));
 
-  return { conversationId };
+  // O piloto só reage a uma entrada NOVA do lead (ao vivo) e quando está ligado.
+  let autopilotPendente = false;
+  if (incrementaBadge) {
+    const [conv] = await db
+      .select({ autopilot: channelConversations.autopilot })
+      .from(channelConversations)
+      .where(eq(channelConversations.id, conversationId))
+      .limit(1);
+    autopilotPendente = Boolean(conv?.autopilot);
+  }
+
+  return { conversationId, businessId, autopilotPendente };
 }
 
 /**
@@ -583,7 +613,7 @@ export async function garantirConexaoSimulada(
 export async function simularEntrada(
   businessId: string,
   input: SimularMensagemInput,
-): Promise<{ conversationId: string } | null> {
+): Promise<IngestResultado | null> {
   const conexao = await garantirConexaoSimulada(businessId, input.platform);
   const externalUserId =
     input.externalUserId ||
