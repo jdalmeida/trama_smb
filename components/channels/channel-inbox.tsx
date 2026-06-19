@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   Bot,
   Check,
+  Crown,
   Inbox,
   Loader2,
   MessageSquarePlus,
@@ -16,7 +17,10 @@ import type {
   ConversationDTO,
   InboxItemDTO,
 } from '@/src/domain/channels';
-import type { ChannelSignalDTO } from '@/src/domain/channel-autopilot';
+import type {
+  CeoThreadMsgDTO,
+  ChannelSignalDTO,
+} from '@/src/domain/channel-autopilot';
 import { LEAD_SIGNAL_TIPO_LABELS } from '@/src/domain/channel-autopilot';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +33,7 @@ type Thread = {
   conversa: ConversationDTO;
   mensagens: ChannelMessageDTO[];
   sinais: ChannelSignalDTO[];
+  ceoThread: CeoThreadMsgDTO[];
 };
 
 /**
@@ -389,6 +394,35 @@ export function ChannelInbox({
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : null}
+
+            {/* Conversa do CEO: o histórico das reações autônomas dele a este lead. */}
+            {thread.ceoThread.length > 0 ? (
+              <div className="border-t border-border px-4 py-2.5">
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                  <Crown className="size-3.5 text-primary" aria-hidden />
+                  Conversa do CEO
+                </p>
+                <div className="flex max-h-44 flex-col gap-2 overflow-y-auto">
+                  {thread.ceoThread.map((t) => (
+                    <div key={t.id} className="flex flex-col gap-1">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {t.role === 'user' ? 'Atendimento' : 'CEO'}
+                      </span>
+                      <div
+                        className={cn(
+                          'whitespace-pre-wrap rounded-lg px-2.5 py-1.5 text-xs leading-relaxed',
+                          t.role === 'assistant'
+                            ? 'bg-primary/5 text-foreground ring-1 ring-primary/15'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        {t.conteudo}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
 
