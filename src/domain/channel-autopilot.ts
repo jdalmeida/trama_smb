@@ -88,6 +88,20 @@ export interface ChannelSignalDTO {
   processadoEm: string | null;
 }
 
+/**
+ * Um turno da conversa do CEO autônomo sobre um lead. `user` carrega os sinais
+ * que o atendimento repassou; `assistant` carrega o resumo do que o CEO fez. A
+ * sequência dá ao CEO memória do que já decidiu para aquele lead (e à UI a
+ * "Conversa do CEO").
+ */
+export interface CeoThreadMsgDTO {
+  id: string;
+  role: 'user' | 'assistant';
+  conteudo: string;
+  signalIds: string[];
+  criadoEm: string;
+}
+
 /** Estado do piloto automático de uma conversa (devolvido junto da conversa). */
 export interface AutopilotEstadoDTO {
   ativo: boolean;

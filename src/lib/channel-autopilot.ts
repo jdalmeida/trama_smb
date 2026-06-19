@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { getDb } from '@/src/db';
 import {
+  channelCeoMessages,
   channelConversations,
   channelMessages,
   channelSignals,
@@ -8,6 +9,7 @@ import {
 import {
   type AtendimentoSinal,
   type AutopilotEstadoDTO,
+  type CeoThreadMsgDTO,
   type ChannelSignalDTO,
   type LeadSignalStatus,
 } from '@/src/domain/channel-autopilot';
@@ -193,5 +195,86 @@ export async function marcarSinaisStatus(
         eq(channelSignals.businessId, businessId),
         inArray(channelSignals.id, ids),
       ),
+    );
+}
+
+/**
+ * "Dequeue" atômico da fila de sinais de uma conversa: reivindica TODOS os
+ * sinais 'novo' (marcando-os 'processando') e os devolve. Pega o lote inteiro
+ * acumulado — colapsa uma rajada de mensagens do lead numa única reação do CEO.
+ *
+ * O `UPDATE ... RETURNING` é atômico: o row-lock do Postgres garante que dois
+ * runs concorrentes nunca reivindiquem o mesmo sinal (o segundo re-avalia o
+ * WHERE depois do commit do primeiro e encontra status 'processando', não
+ * 'novo', então leva 0 linhas). É assim que evitamos o CEO reagir 2x ao mesmo
+ * sinal. Devolve [] quando não há nada pendente.
+ */
+export async function reivindicarSinaisPendentes(
+  businessId: string,
+  conversationId: string,
+): Promise<ChannelSignalDTO[]> {
+  const rows = await getDb()
+    .update(channelSignals)
+    .set({ status: 'processando' as LeadSignalStatus })
+    .where(
+      and(
+        eq(channelSignals.businessId, businessId),
+        eq(channelSignals.conversationId, conversationId),
+        eq(channelSignals.status, 'novo'),
+      ),
+    )
+    .returning();
+  return rows.map(toSignal);
+}
+
+/* ------------------------------------------------------------------ *
+ * Conversa do CEO (thread durável de reações por lead)
+ * ------------------------------------------------------------------ */
+
+function toThreadMsg(r: typeof channelCeoMessages.$inferSelect): CeoThreadMsgDTO {
+  return {
+    id: r.id,
+    role: r.role,
+    conteudo: r.conteudo,
+    signalIds: r.signalIds,
+    criadoEm: r.createdAt.toISOString(),
+  };
+}
+
+/** Lê a conversa do CEO de um lead em ordem cronológica (mais antiga primeiro). */
+export async function lerThreadCeo(
+  businessId: string,
+  conversationId: string,
+): Promise<CeoThreadMsgDTO[]> {
+  const rows = await getDb()
+    .select()
+    .from(channelCeoMessages)
+    .where(
+      and(
+        eq(channelCeoMessages.businessId, businessId),
+        eq(channelCeoMessages.conversationId, conversationId),
+      ),
+    )
+    .orderBy(asc(channelCeoMessages.createdAt));
+  return rows.map(toThreadMsg);
+}
+
+/** Persiste os turnos de uma rodada de reação do CEO (na ordem informada). */
+export async function registrarThreadCeo(
+  businessId: string,
+  conversationId: string,
+  turnos: { role: 'user' | 'assistant'; conteudo: string; signalIds?: string[] }[],
+): Promise<void> {
+  if (turnos.length === 0) return;
+  await getDb()
+    .insert(channelCeoMessages)
+    .values(
+      turnos.map((t) => ({
+        businessId,
+        conversationId,
+        role: t.role,
+        conteudo: t.conteudo,
+        signalIds: t.signalIds ?? [],
+      })),
     );
 }

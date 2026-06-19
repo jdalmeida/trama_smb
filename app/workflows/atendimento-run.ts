@@ -1,5 +1,4 @@
 import {
-  atualizarSinais,
   enviarRespostaAutopilot,
   gerarAtendimento,
   persistirSinais,
@@ -20,13 +19,15 @@ export interface AtendimentoRunInput {
  *
  *  1. gera a próxima resposta + os sinais (agente de atendimento);
  *  2. RESPONDE o lead primeiro (caminho rápido e idempotente — fica no journal);
- *  3. persiste os sinais e aciona o CEO em modo autônomo, que reage mexendo no
- *     CRM e/ou disparando uma pesquisa em paralelo;
- *  4. fecha o ciclo registrando, em cada sinal, o que o CEO fez.
+ *  3. enfileira os sinais (status 'novo') e aciona o CEO, que CONSOME a fila da
+ *     conversa: reage uma única vez ao lote pendente, vendo o que já fez antes
+ *     para este lead (conversa do CEO persistida), e fecha cada sinal.
  *
  * Os passos concluídos ficam no journal do run, então um retry de um passo
- * tardio não reenvia a resposta ao lead. A falha do CEO ao reagir é NÃO-fatal: o
- * lead já foi respondido; marcamos os sinais como 'erro' e encerramos.
+ * tardio não reenvia a resposta ao lead. `reagirComoCeo` é chamado sempre (mesmo
+ * sem sinais nesta rodada) para também drenar sinais pendentes de runs anteriores
+ * que tenham falhado; ele já trata a própria falha (marca 'erro') sem derrubar o
+ * run — o lead já foi respondido.
  */
 export async function atendimentoAutopilotWorkflow(
   input: AtendimentoRunInput,
@@ -41,25 +42,15 @@ export async function atendimentoAutopilotWorkflow(
     await enviarRespostaAutopilot(businessId, conversationId, out.resposta);
   }
 
-  if (out.sinais.length === 0) {
-    return { conversationId, respondeu: out.deveResponder, sinais: 0 };
+  if (out.sinais.length > 0) {
+    await persistirSinais(businessId, conversationId, out.sinais);
   }
 
-  const sinais = await persistirSinais(businessId, conversationId, out.sinais);
-  const ids = sinais.map((s) => s.id);
-  await atualizarSinais(businessId, ids, 'processando');
+  const reacao = await reagirComoCeo(businessId, conversationId);
 
-  try {
-    const resumo = await reagirComoCeo(businessId, conversationId, sinais);
-    await atualizarSinais(businessId, ids, 'processado', resumo);
-  } catch (err) {
-    // O lead já foi respondido; a reação do CEO é melhor-esforço. Não derruba o run.
-    console.error('[atendimentoAutopilot] CEO falhou ao reagir', {
-      conversationId,
-      erro: err instanceof Error ? err.message : String(err),
-    });
-    await atualizarSinais(businessId, ids, 'erro', 'Falha ao reagir aos sinais.');
-  }
-
-  return { conversationId, respondeu: out.deveResponder, sinais: sinais.length };
+  return {
+    conversationId,
+    respondeu: out.deveResponder,
+    sinais: reacao?.total ?? 0,
+  };
 }

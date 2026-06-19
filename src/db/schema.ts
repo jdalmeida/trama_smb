@@ -635,6 +635,37 @@ export const channelSignals = pgTable(
   ],
 );
 
+/**
+ * Conversa (durável) do CEO em modo autônomo SOBRE um lead — uma "thread" por
+ * conversa do canal. Antes o CEO reagia a cada rodada de sinais sem memória do
+ * que já tinha feito (e podia repetir a mesma decisão). Agora cada reação é um
+ * turno aqui: a linha `user` traz os sinais que o atendimento repassou e a linha
+ * `assistant` traz o resumo do que o CEO decidiu/executou. Ao reagir de novo, o
+ * CEO lê esta thread e vê o que já fez e como os sinais evoluíram. Alimenta o
+ * painel "Conversa do CEO" no inbox. Escopada por businessId.
+ */
+export const channelCeoMessages = pgTable(
+  'channel_ceo_messages',
+  {
+    id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => channelConversations.id, { onDelete: 'cascade' }),
+    /** 'user' = sinais repassados pelo atendimento; 'assistant' = decisão do CEO. */
+    role: varchar('role', { length: 16 }).$type<'user' | 'assistant'>().notNull(),
+    conteudo: text('conteudo').notNull(),
+    /** Sinais que este turno cobriu (rastreio; preenchido nas linhas 'user'). */
+    signalIds: jsonb('signal_ids').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('channel_ceo_messages_conversation_idx').on(t.conversationId),
+  ],
+);
+
 /* ================================================================== *
  * Publicações sociais (posts no feed do Facebook / Instagram)
  *
