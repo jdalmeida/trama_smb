@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trama — o percurso · LEPC B</title>
+<meta name="description" content="Entrega final LEPC B — da pesquisa sobre presença digital de PMEs a um produto rodando. Diagnóstico da TopWeeks, solução e um time de agentes de IA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0a12; --bg2:#0a0810; --ink:#ffffff; --muted:rgba(255,255,255,.72); --faint:rgba(255,255,255,.46); --ghost:rgba(255,255,255,.26);
+  --line:rgba(255,255,255,.12); --line-2:rgba(255,255,255,.07);
+  --violet:#8b5cf6; --violet-br:#a684ff; --violet-deep:#7008e7; --violet-soft:#cabbff;
+  --amber:#fab45f; --blue:#70bdff; --green:#68e099; --red:#ff6467;
+  --card:rgba(255,255,255,.045); --card-bd:rgba(255,255,255,.10);
+  --amber-t:rgba(250,180,95,.12); --blue-t:rgba(112,189,255,.12); --green-t:rgba(104,224,153,.12); --violet-t:rgba(139,92,246,.14); --red-t:rgba(255,100,103,.11);
+  --r:18px; --r-sm:13px; --rp:999px;
+  --maxw:1160px;
+  --font:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:74px}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  line-height:1.5;overflow-x:hidden}
+::selection{background:rgba(139,92,246,.38)}
+a{color:inherit}
+img{max-width:100%}
+
+/* ── ambient weave + glow ─────────────────────────────── */
+#weave{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;opacity:.5;z-index:0}
+.glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 820px at 82% -6%, rgba(139,92,246,.14), transparent 60%),
+    radial-gradient(900px 700px at -4% 40%, rgba(112,189,255,.05), transparent 58%),
+    radial-gradient(1000px 900px at 60% 108%, rgba(112,45,231,.10), transparent 60%)}
+.vignette{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(12,10,18,.35),transparent 12% 88%,rgba(12,10,18,.55))}
+
+/* ── progress + nav ───────────────────────────────────── */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--violet-deep),var(--violet-br),var(--blue))}
+.nav{position:fixed;top:0;left:0;right:0;z-index:50;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:linear-gradient(180deg,rgba(12,10,18,.86),rgba(12,10,18,.52));
+  border-bottom:1px solid var(--line-2)}
+.nav-inner{max-width:var(--maxw);margin:0 auto;padding:13px clamp(18px,4vw,40px);
+  display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:baseline;gap:.5em;font-weight:800;letter-spacing:-.02em;font-size:19px;text-decoration:none;flex:none}
+.brand .d{color:var(--violet-br)}
+.brand .sub{font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);align-self:center}
+.nav-links{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{text-decoration:none;color:var(--muted);font-size:13px;font-weight:500;
+  padding:7px 11px;border-radius:9px;white-space:nowrap;transition:.16s;position:relative}
+.nav-links a:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav-links a.on{color:#fff}
+.nav-links a.on::after{content:"";position:absolute;left:11px;right:11px;bottom:2px;height:2px;border-radius:2px;background:var(--violet-br)}
+
+/* ── section scaffolding ──────────────────────────────── */
+main{position:relative;z-index:2}
+.section{max-width:var(--maxw);margin:0 auto;padding:clamp(70px,10vh,120px) clamp(18px,4vw,40px)}
+.section+.section{padding-top:clamp(40px,6vh,72px)}
+.divide{max-width:var(--maxw);margin:0 auto;padding:0 clamp(18px,4vw,40px)}
+.divide hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:0}
+
+/* ── type ─────────────────────────────────────────────── */
+.eyebrow{display:inline-flex;align-items:center;gap:.7em;font-size:clamp(10.5px,1.05vw,12.5px);font-weight:600;
+  letter-spacing:.17em;text-transform:uppercase;color:var(--violet-br);margin:0 0 clamp(16px,2vw,22px)}
+.eyebrow .n{font-family:var(--mono);color:var(--faint);font-weight:500}
+.eyebrow .sep{color:var(--ghost)}
+h1,h2{letter-spacing:-.018em;font-weight:700;margin:0;line-height:1.08}
+h2{font-size:clamp(24px,3.3vw,40px)}
+h2 .g{color:var(--violet-br)}
+h3{margin:0;font-weight:600;letter-spacing:-.01em}
+.lead{font-size:clamp(15px,1.4vw,19.5px);line-height:1.55;color:var(--muted);font-weight:400;margin:clamp(14px,1.8vw,22px) 0 0;max-width:64ch}
+.lead b,.kick b,.card p b,.copy b{color:var(--ink);font-weight:600}
+.kick{font-size:clamp(14px,1.25vw,17.5px);line-height:1.5;color:var(--ink);font-weight:500;margin-top:clamp(18px,2.2vw,28px);max-width:66ch}
+.copy{font-size:clamp(14px,1.2vw,16px);line-height:1.62;color:var(--muted);margin:clamp(12px,1.4vw,18px) 0 0;max-width:70ch}
+.small{font-size:clamp(10.5px,1vw,12.5px);color:var(--faint);line-height:1.45}
+.mono{font-family:var(--mono)}
+.hl{color:var(--violet-soft)}
+
+/* ── cards + grids ────────────────────────────────────── */
+.grid{display:grid;gap:clamp(12px,1.4vw,18px)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--r);
+  padding:clamp(16px,1.7vw,24px);backdrop-filter:blur(5px)}
+.card h3{font-size:clamp(14.5px,1.3vw,18px)}
+.card p{margin:.55em 0 0;font-size:clamp(12.5px,1.08vw,14.5px);line-height:1.5;color:var(--muted)}
+.card .top{display:flex;align-items:center;gap:.6em;margin-bottom:.3em}
+.card.hoverable{transition:.2s;cursor:default}
+.card.hoverable:hover{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.05);transform:translateY(-2px)}
+.idx{font-family:var(--mono);font-size:clamp(11px,1vw,13px);color:var(--violet-br);font-weight:500}
+
+/* ── chips / pills / tags ─────────────────────────────── */
+.chips{display:flex;flex-wrap:wrap;gap:clamp(7px,.8vw,10px)}
+.pill{display:inline-flex;align-items:center;gap:.5em;border:1px solid var(--card-bd);
+  background:rgba(255,255,255,.04);border-radius:var(--rp);
+  padding:.5em .95em;font-size:clamp(11px,1.02vw,13.5px);font-weight:500;color:var(--ink)}
+.pill.q{font-family:var(--mono);font-size:clamp(10.5px,1vw,12.5px);color:var(--muted)}
+.dot{width:.6em;height:.6em;border-radius:50%;display:inline-block;flex:none}
+.tag{font-size:clamp(9.5px,.9vw,11px);font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  padding:.22em .6em;border-radius:6px;display:inline-block}
+.tag.v{background:var(--violet-t);color:var(--violet-br)}
+.tag.a{background:var(--amber-t);color:var(--amber)}
+.tag.b{background:var(--blue-t);color:var(--blue)}
+.tag.g{background:var(--green-t);color:var(--green)}
+.tag.r{background:var(--red-t);color:var(--red)}
+
+/* ── stat blocks ──────────────────────────────────────── */
+.statgrid{display:grid;gap:clamp(11px,1.2vw,16px)}
+.stat{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--r);padding:clamp(15px,1.6vw,22px)}
+.stat .num{font-size:clamp(23px,2.7vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--violet-br)}
+.stat .num.a{color:var(--amber)} .stat .num.b{color:var(--blue)} .stat .num.g{color:var(--green)}
+.stat .lab{font-size:clamp(12px,1.06vw,14px);color:var(--muted);margin-top:.5em;line-height:1.4}
+.stat .src{font-size:clamp(10px,.92vw,11.5px);color:var(--ghost);margin-top:.55em;font-family:var(--mono)}
+
+/* ── flow / nodes ─────────────────────────────────────── */
+.flow{display:flex;align-items:stretch;gap:clamp(8px,.9vw,14px);flex-wrap:wrap}
+.node{flex:1 1 0;min-width:135px;background:var(--card);border:1px solid var(--card-bd);border-radius:14px;
+  padding:clamp(13px,1.3vw,18px);display:flex;flex-direction:column;gap:.4em}
+.node .n{font-family:var(--mono);font-size:clamp(11px,1vw,13px);color:var(--violet-br);font-weight:500}
+.node .t{font-weight:600;font-size:clamp(13px,1.15vw,15.5px)}
+.node .d{font-size:clamp(11px,.98vw,12.8px);color:var(--muted);line-height:1.4}
+.node.accent{border-color:rgba(139,92,246,.42);background:rgba(139,92,246,.06)}
+.node.accent .t{color:var(--violet-br)}
+.arrow{align-self:center;color:var(--ghost);font-size:clamp(16px,1.5vw,22px);flex:none}
+
+/* ── persona cards ────────────────────────────────────── */
+.persona{display:flex;gap:clamp(12px,1.1vw,16px);align-items:flex-start}
+.pchip{width:clamp(40px,3.5vw,48px);height:clamp(40px,3.5vw,48px);border-radius:13px;display:grid;place-items:center;
+  font-size:clamp(19px,1.8vw,24px);flex:none}
+.persona .nm{display:flex;align-items:center;gap:.5em;font-weight:600;font-size:clamp(13.5px,1.25vw,17px);margin-bottom:.15em}
+
+/* ── tables ───────────────────────────────────────────── */
+.tblwrap{overflow-x:auto;border:1px solid var(--card-bd);border-radius:var(--r);background:var(--card);scrollbar-width:thin}
+.tbl{width:100%;border-collapse:collapse;font-size:clamp(12px,1.05vw,14px);min-width:520px}
+.tbl th,.tbl td{text-align:left;padding:clamp(10px,1.15vw,15px) clamp(12px,1.3vw,18px);vertical-align:top}
+.tbl thead th{font-size:clamp(10px,.92vw,11.5px);text-transform:uppercase;letter-spacing:.09em;color:var(--violet-br);font-weight:600;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tbody tr+tr td{border-top:1px solid var(--line-2)}
+.tbl td.k{color:#fff;font-weight:500}
+.tbl td .muted,.tbl td.muted{color:var(--muted)}
+.tbl .num{font-family:var(--mono);color:var(--violet-br);font-weight:500;white-space:nowrap}
+
+/* ── callouts ─────────────────────────────────────────── */
+.callout{border:1px solid rgba(139,92,246,.3);background:linear-gradient(180deg,rgba(139,92,246,.12),rgba(139,92,246,.04));
+  border-radius:var(--r);padding:clamp(20px,2.4vw,32px)}
+.callout .big{font-size:clamp(18px,2vw,27px);font-weight:600;line-height:1.28;letter-spacing:-.01em;margin:0}
+.callout .big .g{color:var(--violet-br)}
+.callout p{margin:.7em 0 0}
+.quote{border-left:2px solid var(--violet-br);padding:.2em 0 .2em 1.1em;margin:clamp(14px,1.6vw,20px) 0 0;
+  font-size:clamp(15px,1.5vw,21px);font-weight:500;line-height:1.35;color:#fff;letter-spacing:-.01em}
+.quote .attr{display:block;font-size:clamp(11px,1vw,13px);font-weight:400;color:var(--faint);margin-top:.5em;letter-spacing:0}
+
+/* ── timeline (marcos) ────────────────────────────────── */
+.timeline{position:relative;margin-top:clamp(20px,2.4vw,30px);padding-left:clamp(26px,3vw,40px)}
+.timeline::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--green),var(--violet-br),var(--card-bd))}
+.tl-item{position:relative;padding:0 0 clamp(20px,2.4vw,30px)}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:"";position:absolute;left:calc(-1 * clamp(26px,3vw,40px) + 3px);top:3px;
+  width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--violet-br)}
+.tl-item.done::before{background:var(--green);border-color:var(--green);box-shadow:0 0 0 4px rgba(104,224,153,.14)}
+.tl-item.live::before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 4px rgba(250,180,95,.14)}
+.tl-head{display:flex;flex-wrap:wrap;align-items:center;gap:.7em;margin-bottom:.4em}
+.tl-head .m{font-family:var(--mono);font-size:clamp(11px,1vw,13px);color:var(--faint)}
+.tl-head .ti{font-weight:600;font-size:clamp(14.5px,1.3vw,18px)}
+.tl-item p{margin:.15em 0 0;font-size:clamp(12.5px,1.08vw,14.5px);color:var(--muted);line-height:1.5;max-width:70ch}
+.status{font-size:clamp(9.5px,.9vw,11px);font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:.24em .65em;border-radius:6px}
+.status.done{background:var(--green-t);color:var(--green)}
+.status.live{background:var(--amber-t);color:var(--amber)}
+.status.next{background:var(--violet-t);color:var(--violet-br)}
+
+/* ── arc / percurso strip ─────────────────────────────── */
+.arc{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(8px,1vw,14px);margin-top:clamp(26px,3vw,40px)}
+.arc-step{background:var(--card);border:1px solid var(--card-bd);border-radius:14px;padding:clamp(13px,1.4vw,20px);
+  display:flex;flex-direction:column;gap:.35em;transition:.2s}
+.arc-step .n{font-family:var(--mono);font-size:11px;color:var(--violet-br);font-weight:500}
+.arc-step .t{font-weight:600;font-size:clamp(12.5px,1.15vw,15px);letter-spacing:-.01em}
+.arc-step .d{font-size:clamp(10.5px,.96vw,12px);color:var(--faint);line-height:1.35}
+
+/* ── hero ─────────────────────────────────────────────── */
+.hero{min-height:100vh;display:flex;align-items:center;padding-top:74px;position:relative}
+.hero .inner{max-width:var(--maxw);margin:0 auto;padding:clamp(30px,5vh,60px) clamp(18px,4vw,40px);width:100%}
+.hero .eyebrow{margin-bottom:clamp(22px,3vw,34px);flex-wrap:wrap}
+.wm{font-size:clamp(66px,12vw,158px);font-weight:800;letter-spacing:-.045em;line-height:.86;margin:0}
+.wm .d{color:var(--violet-br)}
+.hero .tl-line{font-size:clamp(19px,2.4vw,34px);font-weight:600;letter-spacing:-.015em;margin:clamp(18px,2.4vw,30px) 0 0;line-height:1.12}
+.hero .st{font-size:clamp(14.5px,1.4vw,19px);color:var(--muted);margin:clamp(14px,1.6vw,20px) 0 0;max-width:60ch;line-height:1.55}
+.hero .st b{color:var(--ink);font-weight:600}
+.hero-meta{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,12px);margin-top:clamp(26px,3.4vw,42px)}
+.meta-pill{display:inline-flex;align-items:center;gap:.55em;border:1px solid var(--card-bd);background:rgba(255,255,255,.035);
+  border-radius:var(--rp);padding:.5em 1em;font-size:clamp(11px,1.02vw,13.5px);color:var(--muted)}
+.meta-pill b{color:#fff;font-weight:600}
+.rule{height:1px;background:var(--line);margin:clamp(24px,3.2vw,40px) 0 clamp(16px,1.8vw,22px);max-width:680px}
+.team-line{font-size:clamp(12px,1.1vw,14.5px);color:var(--muted)}
+.team-line b{color:#fff;font-weight:600}
+.scrollhint{position:absolute;left:50%;transform:translateX(-50%);bottom:clamp(18px,3vh,30px);
+  font-size:11px;color:var(--ghost);letter-spacing:.14em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px}
+.scrollhint .ln{width:1px;height:26px;background:linear-gradient(180deg,var(--violet-br),transparent);animation:drip 2s infinite}
+@keyframes drip{0%{opacity:.2;transform:scaleY(.4)}50%{opacity:1;transform:scaleY(1)}100%{opacity:.2;transform:scaleY(.4)}}
+
+/* ── loop / step ribbon ───────────────────────────────── */
+.loop-note{display:inline-flex;align-items:center;gap:.5em;font-size:clamp(11px,1vw,13px);color:var(--violet-soft);
+  font-family:var(--mono);margin-top:clamp(12px,1.4vw,18px)}
+
+/* ── footer ───────────────────────────────────────────── */
+.footer{position:relative;z-index:2;border-top:1px solid var(--line-2);margin-top:clamp(50px,7vh,90px);
+  background:linear-gradient(180deg,transparent,rgba(112,45,231,.06))}
+.footer-inner{max-width:var(--maxw);margin:0 auto;padding:clamp(44px,6vh,72px) clamp(18px,4vw,40px)}
+.footer .wm-sm{font-size:clamp(40px,7vw,88px);font-weight:800;letter-spacing:-.04em;line-height:.9;margin:0}
+.footer .wm-sm .d{color:var(--violet-br)}
+.footer .tag-close{font-size:clamp(14px,1.4vw,19px);color:var(--muted);margin:clamp(12px,1.6vw,20px) 0 0}
+
+/* ── reveal ───────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.6,.2,1),transform .7s cubic-bezier(.2,.6,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.06s}.reveal.d2{transition-delay:.12s}.reveal.d3{transition-delay:.18s}.reveal.d4{transition-delay:.24s}
+
+/* ── section label kicker ─────────────────────────────── */
+.subhead{display:flex;align-items:center;gap:.7em;font-size:clamp(11px,1.05vw,13px);font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:clamp(30px,4vw,50px) 0 clamp(14px,1.6vw,20px)}
+.subhead .bar{width:22px;height:2px;background:var(--violet-br);border-radius:2px;flex:none}
+.mt-s{margin-top:clamp(12px,1.4vw,18px)} .mt-m{margin-top:clamp(18px,2.2vw,28px)} .mt-l{margin-top:clamp(26px,3vw,40px)}
+
+/* ── responsive ───────────────────────────────────────── */
+@media (max-width:860px){
+  .g3,.g4{grid-template-columns:1fr 1fr}
+  .arc{grid-template-columns:1fr 1fr}
+  .flow{flex-direction:column}
+  .arrow{transform:rotate(90deg);align-self:flex-start;margin-left:14px}
+  .nav-links{margin-left:0}
+  .brand .sub{display:none}
+}
+@media (max-width:560px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .arc{grid-template-columns:1fr}
+  .hero .eyebrow{font-size:10px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .scrollhint .ln{animation:none}
+}
+</style>
+</head>
+<body>
+<canvas id="weave" aria-hidden="true"></canvas>
+<div class="glow"></div>
+<div class="vignette"></div>
+<div class="progress" id="progress"></div>
+
+<!-- ── NAV ─────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#inicio">Trama<span class="d">.</span> <span class="sub">LEPC B</span></a>
+    <div class="nav-links" id="navlinks">
+      <a href="#inicio">Início</a>
+      <a href="#desafio">Desafio</a>
+      <a href="#metodo">Método</a>
+      <a href="#pesquisa">Pesquisa</a>
+      <a href="#diagnostico">Diagnóstico</a>
+      <a href="#solucao">Solução</a>
+      <a href="#descoberta">Descoberta</a>
+      <a href="#entrega">Entrega</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ── HERO ────────────────────────────────────────────── -->
+<section class="hero" id="inicio">
+  <div class="inner">
+    <p class="eyebrow">Laboratório de Empreendedorismo e Práticas Comunitárias <span class="sep">·</span> LEPC B <span class="sep">·</span> Prof. Kurt Molz</p>
+    <h1 class="wm">Trama<span class="d">.</span></h1>
+    <p class="tl-line">IA que trabalha pra você, não no seu lugar.</p>
+    <p class="st">O percurso de um semestre — da <b>pesquisa</b> sobre a presença digital das pequenas empresas ao <b>diagnóstico</b> de um caso real e, dele, a um <b>produto rodando</b>: um time de agentes de IA que encontra clientes e entende o mercado. Todos os fios, costurados em um só.</p>
+    <div class="hero-meta">
+      <span class="meta-pill">Tema: <b>presença de PMEs nas redes sociais</b></span>
+      <span class="meta-pill">Stakeholder: <b>TopWeeks</b> · tw4r.com</span>
+      <span class="meta-pill">Entrega final: <b>01 · jul · 2026</b></span>
+    </div>
+    <div class="rule"></div>
+    <p class="team-line"><b>Enzo · Guilherme · João Gabriel · Nathan · Rafael</b> &nbsp;·&nbsp; UNISC — Santa Cruz do Sul/RS &nbsp;·&nbsp; <span class="mono" style="color:var(--violet-br)">tramasmb.vercel.app</span></p>
+  </div>
+  <div class="scrollhint" aria-hidden="true"><span class="ln"></span>role para percorrer</div>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── ARC / PERCURSO ──────────────────────────────────── -->
+<section class="section" id="arco">
+  <p class="eyebrow reveal"><span class="n">00</span> <span class="sep">/</span> o percurso</p>
+  <h2 class="reveal">De uma pergunta ampla a um produto no ar</h2>
+  <p class="lead reveal d1">O trabalho não começou pela solução. Começou por entender o terreno, medir o problema em um caso concreto e só então propor — e construir — algo que resolvesse. Cinco etapas, um fio contínuo.</p>
+  <div class="arc">
+    <div class="arc-step reveal d1"><span class="n">01</span><span class="t">Pesquisa</span><span class="d">Referencial de larga escala: PMEs, redes sociais e a virada da busca por IA.</span></div>
+    <div class="arc-step reveal d2"><span class="n">02</span><span class="t">Diagnóstico</span><span class="d">A TopWeeks sob inspeção, cruzada com pesquisa exploratória e hipóteses.</span></div>
+    <div class="arc-step reveal d3"><span class="n">03</span><span class="t">Solução</span><span class="d">Do brainstorming à convergência: um time de agentes com playbook.</span></div>
+    <div class="arc-step reveal d4"><span class="n">04</span><span class="t">Descoberta</span><span class="d">Marco 1: o que 43 sinais reais revelaram sobre o mercado.</span></div>
+    <div class="arc-step reveal d4"><span class="n">05</span><span class="t">Entrega</span><span class="d">Produto rodando, marcos, e o que fica como ativo.</span></div>
+  </div>
+</section>
+
+
+<div class="divide"><hr></div>
+
+<!-- ── DESAFIO ─────────────────────────────────────────── -->
+<section class="section" id="desafio">
+  <p class="eyebrow reveal"><span class="n">01</span> <span class="sep">/</span> o desafio</p>
+  <h2 class="reveal">Um marketplace real, travado no <span class="g">cold start</span></h2>
+  <p class="lead reveal d1">A <b>TopWeeks</b> (tw4r.com) é uma plataforma brasileira de aluguel <b>peer-to-peer</b> de semanas de timesharing, sediada em Santa Cruz do Sul (RS). Ela permite que donos de cotas aluguem suas semanas ociosas diretamente a viajantes — sem a intermediação e as anuidades altas das grandes redes como RCI e Interval International.</p>
+
+  <div class="grid g3 mt-l">
+    <div class="card reveal d1 hoverable">
+      <div class="top"><span class="tag v">stakeholder</span></div>
+      <h3>TopWeeks · tw4r.com</h3>
+      <p>Aluguel P2P de semanas de timesharing. Marketplace de dois lados: proprietários (oferta) × viajantes (demanda). Concorrentes: RedWeek, RCI, Interval International.</p>
+    </div>
+    <div class="card reveal d2 hoverable">
+      <div class="top"><span class="tag a">a dor</span></div>
+      <h3>Oferta que não aparece</h3>
+      <p>O founder relata dificuldade em atrair proprietários de cotas suficientes para popular a plataforma. Sem oferta visível, não há o que mostrar ao viajante.</p>
+    </div>
+    <div class="card reveal d3 hoverable">
+      <div class="top"><span class="tag b">o público</span></div>
+      <h3>Donos de cota — 40 a 65 anos</h3>
+      <p>Público específico, muitas vezes frustrado com o produto original, que discute suas dores em espaços bem definidos: grupos de Facebook, fóruns de viagem, comunidades de consumidor.</p>
+    </div>
+  </div>
+
+  <div class="callout reveal d2 mt-l">
+    <p class="eyebrow" style="margin-bottom:12px">problema relatado pelo founder</p>
+    <p class="quote" style="margin-top:0">“Não consigo atrair donos de cotas para popular a plataforma.”
+      <span class="attr">— o clássico problema de <b style="color:var(--violet-soft)">cold start do lado da oferta</b> em marketplaces de dois lados.</span></p>
+    <div class="flow mt-m">
+      <div class="node"><span class="t">Sem oferta</span><span class="d">A home chegou a exibir “Nenhuma unidade encontrada!”.</span></div>
+      <span class="arrow">→</span>
+      <div class="node"><span class="t">Não atrai demanda</span><span class="d">Viajante que chega e não vê opções, sai.</span></div>
+      <span class="arrow">→</span>
+      <div class="node"><span class="t">Oferta não cadastra</span><span class="d">Sem demanda visível, o proprietário não vê motivo para entrar.</span></div>
+      <span class="arrow" style="color:var(--violet-br)">↻</span>
+    </div>
+    <p class="copy" style="max-width:none">A saída típica para o cold start é uma de três: <b>subsidiar</b> um dos lados, <b>curar inventário</b> próprio, ou <b>ir ativamente até onde o público já está</b>. Foi essa terceira via que orientou tudo o que veio depois.</p>
+  </div>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── MÉTODO ──────────────────────────────────────────── -->
+<section class="section" id="metodo">
+  <p class="eyebrow reveal"><span class="n">02</span> <span class="sep">/</span> método</p>
+  <h2 class="reveal">Não perguntamos só “como salvar a TopWeeks”</h2>
+  <p class="lead reveal d1">A pergunta foi ampla de propósito, para gerar conhecimento transferível — a TopWeeks entra como <b>caso de aplicação</b>, não como fim em si.</p>
+
+  <div class="callout reveal d1 mt-l" style="background:linear-gradient(180deg,rgba(139,92,246,.10),rgba(139,92,246,.03))">
+    <p class="eyebrow" style="margin-bottom:10px">pergunta orientadora</p>
+    <p class="big" style="margin:0">Como PMEs captam clientes e parceiros — e onde falham — quando dependem de <span class="g">dois públicos distintos</span>?</p>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>Três fontes, uma triangulação</div>
+  <div class="grid g3">
+    <div class="card reveal d1">
+      <div class="top"><span class="tag v">exploratória</span></div>
+      <h3>Pesquisa primária</h3>
+      <p>Formulário com 13 questões, distribuído em redes pessoais e profissionais. Investiga presença digital, conhecimento dos espaços do público-alvo e retorno percebido.</p>
+    </div>
+    <div class="card reveal d2">
+      <div class="top"><span class="tag b">larga escala</span></div>
+      <h3>Pesquisa secundária</h3>
+      <p>Referencial consolidado de Sebrae, ABDI, IBGE, McKinsey, Bain, Conductor, Pew Research, Semrush e DataReportal — dois eixos: redes sociais e comportamento de busca.</p>
+    </div>
+    <div class="card reveal d3">
+      <div class="top"><span class="tag g">estudo de caso</span></div>
+      <h3>Análise do stakeholder</h3>
+      <p>Inspeção pública do site tw4r.com e busca por perfis oficiais da marca nas principais redes. O que é observável de fora — que é o que o mercado enxerga.</p>
+    </div>
+  </div>
+  <p class="kick reveal d1">A amostra primária é pequena e não projeta percentuais. Ela vale como <b>estudo de caso qualitativo</b> — e sua força vem de convergir com pesquisas de milhares de respondentes.</p>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── PESQUISA ────────────────────────────────────────── -->
+<section class="section" id="pesquisa">
+  <p class="eyebrow reveal"><span class="n">03</span> <span class="sep">/</span> pesquisa de larga escala</p>
+  <h2 class="reveal">O ambiente mudou — em <span class="g">duas frentes</span> ao mesmo tempo</h2>
+  <p class="lead reveal d1">As redes sociais se consolidaram como canal central das PMEs, enquanto a forma de buscar informação passa pela transformação mais profunda desde a chegada do mobile. As duas coisas, juntas, redefinem quem é encontrado — e quem some.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Redes sociais — o canal de descoberta padrão</div>
+  <div class="statgrid g4" style="display:grid">
+    <div class="stat reveal d1"><div class="num">144 mi</div><div class="lab">usuários ativos em redes sociais no Brasil</div><div class="src">DataReportal, 2025</div></div>
+    <div class="stat reveal d2"><div class="num">99%</div><div class="lab">dos smartphones brasileiros têm WhatsApp</div><div class="src">DataReportal</div></div>
+    <div class="stat reveal d3"><div class="num">64%</div><div class="lab">das PMEs brasileiras têm perfil no Instagram</div><div class="src">Sebrae TIC 2025</div></div>
+    <div class="stat reveal d4"><div class="num">56%</div><div class="lab">das PMEs vendem pelo WhatsApp</div><div class="src">Sebrae TIC 2025</div></div>
+  </div>
+  <p class="copy reveal d1">7 em cada 10 pequenos negócios brasileiros já mantêm perfil em redes sociais. Ainda assim, dois terços permanecem em níveis baixos a médios de maturidade digital, e 77% destinam menos de 2% do orçamento à tecnologia. <b>Ter presença não é o mesmo que ter resultado.</b></p>
+
+  <div class="subhead reveal"><span class="bar"></span>Busca por IA — o próximo motor de descoberta</div>
+  <div class="statgrid g4" style="display:grid">
+    <div class="stat reveal d1"><div class="num b">58,5%</div><div class="lab">das buscas no Google terminam sem clique</div><div class="src">Bain &amp; Company</div></div>
+    <div class="stat reveal d2"><div class="num b">527%</div><div class="lab">de crescimento no tráfego referenciado por IA (YoY)</div><div class="src">Search Engine Land, 2025</div></div>
+    <div class="stat reveal d3"><div class="num b">~60%</div><div class="lab">dos consumidores já usam IA ao avaliar compras</div><div class="src">UVA Darden / Marketing Dive</div></div>
+    <div class="stat reveal d4"><div class="num b">4,4×</div><div class="lab">visitantes vindos de LLMs convertem mais que a busca orgânica</div><div class="src">Semrush</div></div>
+  </div>
+
+  <div class="callout reveal d1 mt-l">
+    <p class="eyebrow" style="margin-bottom:10px">o dado que muda a lógica</p>
+    <p class="big" style="margin:0">O site da própria marca é apenas <span class="g">5% a 10%</span> das fontes que as IAs usam para falar dela. Os outros <span class="g">90%</span> vêm de terceiros — publishers, avaliações, diretórios, conteúdo de usuários.</p>
+    <p class="copy" style="max-width:none">Na prática: dá para ter um site excelente e mesmo assim sumir quando alguém pergunta ao ChatGPT “qual a melhor plataforma de X no Brasil?”. Visibilidade em IA depende de <b>menções em fontes confiáveis fora do seu domínio</b>. <span class="small mono">McKinsey — AI Discovery Survey, ago/2025 · 1.927 consumidores</span></p>
+  </div>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── DIAGNÓSTICO ─────────────────────────────────────── -->
+<section class="section" id="diagnostico">
+  <p class="eyebrow reveal"><span class="n">04</span> <span class="sep">/</span> diagnóstico</p>
+  <h2 class="reveal">A plataforma existe — mas é <span class="g">invisível</span> onde o mercado decide</h2>
+  <p class="lead reveal d1">O problema da TopWeeks não é de concepção do produto; é de execução digital. A inspeção mapeou quatro frentes de fragilidade, em ordem de severidade.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Quatro frentes de fragilidade</div>
+  <div class="grid g2">
+    <div class="card reveal d1 hoverable">
+      <div class="top"><span class="idx">01</span><span class="tag r">crítica</span></div>
+      <h3 class="mt-s">Invisível em redes sociais</h3>
+      <p>Nenhum perfil ativo vinculado à marca em Instagram, Facebook, WhatsApp Business, LinkedIn, YouTube, TikTok ou X. Em um país onde 7 de 10 PMEs têm presença, isso é uma anomalia — e turismo é uma categoria visual, que vive de imagem e prova social.</p>
+    </div>
+    <div class="card reveal d2 hoverable">
+      <div class="top"><span class="idx">02</span><span class="tag a">alta</span></div>
+      <h3 class="mt-s">Diferenciação genérica e sem prova</h3>
+      <p>Quatro “diferenciais” declarados — facilidade, transparência, baixo custo, segurança — sem números, sem casos, sem contraste com concorrentes. “Transparência” num site que não publica a própria comissão. “Segurança” afirmada sem detalhar o mecanismo.</p>
+    </div>
+    <div class="card reveal d3 hoverable">
+      <div class="top"><span class="idx">03</span><span class="tag a">alta</span></div>
+      <h3 class="mt-s">Invisível para IAs (AEO/GEO)</h3>
+      <p>Copyright de 2020, sem blog, sem conteúdo em formato pergunta-resposta, sem schema markup, sem presença em listas de terceiros. Ao perguntar a ChatGPT, Gemini e Perplexity “qual plataforma para alugar semanas de timeshare no Brasil”, a TopWeeks não aparece.</p>
+    </div>
+    <div class="card reveal d4 hoverable">
+      <div class="top"><span class="idx">04</span><span class="tag b">média</span></div>
+      <h3 class="mt-s">Alto atrito na captura de valor</h3>
+      <p>Cadastro de resorts feito manualmente pela equipe, comissão não publicada em lugar nenhum, sem canal transacional ágil (WhatsApp com catálogo, PIX). A marca ainda opera com três nomes — TopWeeks, TW4R, tw4r.com — que fragmentam qualquer menção.</p>
+    </div>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>Matriz de severidade — o que atacar primeiro</div>
+  <div class="tblwrap reveal d1">
+    <table class="tbl">
+      <thead><tr><th>Ponto fraco</th><th>Severidade</th><th>Esforço</th><th>Prioridade</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Ausência de Instagram e WhatsApp Business</td><td><span class="tag r">crítica</span></td><td class="muted">baixo</td><td class="num">1</td></tr>
+        <tr><td class="k">Liquidez do marketplace não visível</td><td><span class="tag r">crítica</span></td><td class="muted">alto</td><td class="num">2</td></tr>
+        <tr><td class="k">Ausência de prova social no site</td><td><span class="tag r">crítica</span></td><td class="muted">baixo</td><td class="num">3</td></tr>
+        <tr><td class="k">Conteúdo educativo próprio inexistente</td><td><span class="tag a">alta</span></td><td class="muted">médio</td><td class="num">4</td></tr>
+        <tr><td class="k">Invisibilidade para IAs (sem schema, sem listas)</td><td><span class="tag a">alta</span></td><td class="muted">médio</td><td class="num">9</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small reveal mt-s">Recorte das 12 fragilidades mapeadas. A lógica: começar pelo que é <b style="color:var(--muted)">crítico e de baixo esforço</b> — parar de sangrar antes de reconstruir.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Pesquisa exploratória — o que os respondentes revelaram</div>
+  <p class="copy reveal">Amostra qualitativa (n = 4). Padrões observados, não projetáveis — mas notavelmente consistentes entre si.</p>
+  <div class="tblwrap reveal d1 mt-s">
+    <table class="tbl">
+      <thead><tr><th>Segmento</th><th>Tempo</th><th>Marketplace?</th><th>Maior desafio</th><th>Rede</th><th>Nota</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Internacionalização B2B</td><td class="muted">1–3 a</td><td class="muted">Parcial</td><td class="muted">Converter interessados</td><td class="muted">LinkedIn</td><td class="num">2</td></tr>
+        <tr><td class="k">Agência de viagem</td><td class="muted">1–3 a</td><td class="muted">Sim</td><td class="muted">Converter interessados</td><td class="muted">Instagram</td><td class="num">3</td></tr>
+        <tr><td class="k">Moda</td><td class="muted">4–10 a</td><td class="muted">Não</td><td class="muted">Encontrar público</td><td class="muted">Instagram</td><td class="num">1</td></tr>
+        <tr><td class="k">Negócio presencial</td><td class="muted">&lt; 1 a</td><td class="muted">Não</td><td class="muted">Encontrar público</td><td class="muted">Facebook</td><td class="num">4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid g3 mt-m">
+    <div class="stat reveal d1"><div class="num a">3 de 4</div><div class="lab">não sabem onde o público-alvo discute o problema que resolvem</div></div>
+    <div class="stat reveal d2"><div class="num a">2,5 / 5</div><div class="lab">retorno percebido das redes sociais — mesmo estando todos ativos nelas</div></div>
+    <div class="stat reveal d3"><div class="num a">2 de 4</div><div class="lab">declaram explicitamente não ter estratégia estruturada de captação</div></div>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>O caso análogo — um espelho da TopWeeks</div>
+  <div class="grid g2">
+    <div class="card reveal d1" style="border-color:rgba(139,92,246,.28)">
+      <p class="eyebrow" style="margin-bottom:12px">respondente nº 2</p>
+      <h3>Uma agência de viagem que é marketplace de dois lados</h3>
+      <p>Mesmo setor (turismo), mesmo modelo (marketplace), estágio parecido (1–3 anos). Maior desafio: “converter interessados em clientes pagantes”. Sobre o público: <b>“não sei onde ele discute esses problemas.”</b></p>
+    </div>
+    <div class="card reveal d2">
+      <div class="tblwrap" style="border:0;background:transparent">
+        <table class="tbl" style="min-width:0">
+          <thead><tr><th>Dimensão</th><th style="color:var(--blue)">Respondente 2</th><th style="color:var(--green)">TopWeeks</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Setor</td><td class="muted">Turismo</td><td class="muted">Turismo</td></tr>
+            <tr><td class="k">Modelo</td><td class="muted">Marketplace 2 lados</td><td class="muted">Marketplace 2 lados</td></tr>
+            <tr><td class="k">Sintoma</td><td class="muted">Não sabe onde o público está</td><td class="muted">Não atrai a oferta</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <p class="kick reveal d1">O dilema da TopWeeks <b>não é idiossincrático</b>. É compartilhado por PMEs em situação análoga — o que muda o valor do trabalho: deixa de ser sobre uma empresa e passa a ser sobre um padrão.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Três hipóteses — sobre PMEs, com a TopWeeks como caso</div>
+  <div class="grid g3">
+    <div class="card reveal d1">
+      <div class="top"><span class="idx">H1</span></div>
+      <h3 class="mt-s">Aquisição ativa &gt; presença passiva</h3>
+      <p><b>Para PMEs:</b> quem depende de dois públicos não resolve o cold start com presença estática. Precisa ir até onde o lado escasso já discute suas dores.</p>
+      <p style="color:var(--violet-soft)"><b>TopWeeks:</b> buscar donos de cota em grupos de FB, fóruns e advogados de saída de contrato.</p>
+    </div>
+    <div class="card reveal d2">
+      <div class="top"><span class="idx">H2</span></div>
+      <h3 class="mt-s">Prova social precede escala</h3>
+      <p><b>Para PMEs:</b> marketplaces iniciais não convertem sem evidência tangível de que outros já confiaram. Casos documentados pesam mais que diferenciais genéricos.</p>
+      <p style="color:var(--violet-soft)"><b>TopWeeks:</b> 3–5 casos reais &gt; os 4 diferenciais declarados.</p>
+    </div>
+    <div class="card reveal d3">
+      <div class="top"><span class="idx">H3</span></div>
+      <h3 class="mt-s">IA é o novo canal de descoberta</h3>
+      <p><b>Para PMEs:</b> com +527% de tráfego por IA, quem é invisível para ChatGPT, Gemini e Perplexity perde fatia crescente do funil.</p>
+      <p style="color:var(--violet-soft)"><b>TopWeeks:</b> sem conteúdo citável, sem listas, sem schema → fora do radar.</p>
+    </div>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>Triangulação — cada padrão tem eco no referencial</div>
+  <div class="tblwrap reveal d1">
+    <table class="tbl">
+      <thead><tr><th>Padrão observado (n=4)</th><th>Eco no referencial de larga escala</th><th>Fonte</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Maioria não sabe onde o público discute</td><td class="muted">90% das fontes que IAs usam vêm de terceiros, não do site</td><td class="num">McKinsey, 2025</td></tr>
+        <tr><td class="k">Retorno percebido das redes é baixo</td><td class="muted">64% apontam redes como principal tráfego, mas 40% relatam queda</td><td class="num">WordStream, 2026</td></tr>
+        <tr><td class="k">Metade sem estratégia estruturada</td><td class="muted">⅔ dos pequenos negócios em maturidade digital baixa a média</td><td class="num">Sebrae &amp; ABDI, 2025</td></tr>
+        <tr><td class="k">Baixa disposição a pagar (até R$ 200/mês)</td><td class="muted">77% das empresas destinam menos de 2% do orçamento à tecnologia</td><td class="num">Amcham, 2026</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="kick reveal d1">A convergência entre o pequeno e o grande eleva a confiança acima da especulação: o problema é <b>estrutural no ecossistema de PMEs brasileiras</b>.</p>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── SOLUÇÃO ─────────────────────────────────────────── -->
+<section class="section" id="solucao">
+  <p class="eyebrow reveal"><span class="n">05</span> <span class="sep">/</span> solução</p>
+  <h2 class="reveal">Cinco ideias que viraram <span class="g">uma</span></h2>
+  <p class="lead reveal d1">O brainstorming começou ouvindo cada integrante sem descartar nada. Cada proposta tinha um pedaço de verdade — e nenhuma, sozinha, resolvia as três perguntas: <b>resolve o problema do founder? cabe no semestre? sobrevive depois do LEPC?</b></p>
+
+  <div class="subhead reveal"><span class="bar"></span>As cinco propostas iniciais</div>
+  <div class="grid g3">
+    <div class="card reveal d1"><div class="top"><span class="tag a">João</span></div><h3 class="mt-s">Consultoria de presença digital</h3><p>Pacote de SEO, AEO, GEO e gestão de redes. <b style="color:var(--muted)">Limite:</b> receita linear, não escala, e não ataca o gargalo específico.</p></div>
+    <div class="card reveal d2"><div class="top"><span class="tag b">Enzo</span></div><h3 class="mt-s">Mini SaaS de IA para presença</h3><p>Gerar conteúdo e programar posts. <b style="color:var(--muted)">Limite:</b> espaço hipercompetitivo; risco de virar “mais um wrapper de ChatGPT”.</p></div>
+    <div class="card reveal d3"><div class="top"><span class="tag g">Nathan</span></div><h3 class="mt-s">CRM com bot de prospecção</h3><p>Outreach automatizado a leads. <b style="color:var(--muted)">Limite:</b> LGPD, e abordagem fria reativa o trauma de quem já foi enganado vendendo timeshare.</p></div>
+    <div class="card reveal d1"><div class="top"><span class="tag v">Rafael</span></div><h3 class="mt-s">Comunidade própria da TopWeeks</h3><p>Grupo/Discord de donos de cota. <b style="color:var(--muted)">Limite:</b> construir do zero leva meses; timing errado para o semestre.</p></div>
+    <div class="card reveal d2"><div class="top"><span class="tag a">Guilherme</span></div><h3 class="mt-s">Parcerias com advogados e administradoras</h3><p>Canais B2B qualificados. <b style="color:var(--muted)">Limite:</b> execução comercial pura — subutiliza um time majoritariamente técnico.</p></div>
+    <div class="card reveal d3" style="border-color:rgba(139,92,246,.32);background:rgba(139,92,246,.05)">
+      <div class="top"><span class="tag v">a virada</span></div><h3 class="mt-s">“E se a gente combinar em vez de escolher?”</h3><p>O bot do Nathan, repensado: não prospecção fria, mas <b style="color:#fff">um agente que monitora onde o público já fala</b> e entrega oportunidades para o founder agir como pessoa.</p></div>
+  </div>
+
+  <div class="callout reveal d1 mt-l">
+    <p class="big">Cada proposta entrou na arquitetura final: a consultoria virou o <span class="g">método</span>, o bot virou o <span class="g">agente de inteligência</span>, a comunidade virou o <span class="g">princípio</span> (ir até onde o público está), as parcerias viraram uma <span class="g">camada do playbook</span>, e o SaaS virou o <span class="g">caminho de produto</span>.</p>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>A solução — Trama, o seu time de agentes de IA</div>
+  <p class="copy reveal">Você conversa com um agente <b>CEO</b> que entende o negócio, monta um perfil e um plano, e delega a especialistas. Você acompanha o time ao vivo e recebe entregáveis prontos. <b>Você decide, eles executam.</b></p>
+  <div class="flow reveal d1 mt-s">
+    <div class="node"><span class="t">Você</span><span class="d">Fala a dor em linguagem simples: “quero atrair mais clientes”.</span></div>
+    <span class="arrow">→</span>
+    <div class="node accent"><span class="t">Agente CEO</span><span class="d">Entende o negócio, monta o <b style="color:#fff">Perfil</b> e um plano — e delega.</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">3 personas</span><span class="d">Especialistas que executam em paralelo, cada uma no seu ofício.</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="t">Entregáveis</span><span class="d">Planos e materiais prontos + o painel “Time” trabalhando ao vivo.</span></div>
+  </div>
+  <div class="grid g3 mt-m">
+    <div class="card persona reveal d1"><div class="pchip" style="background:var(--amber-t);color:var(--amber)">✍️</div><div><div class="nm">Conteúdo &amp; Aquisição <span class="dot" style="background:var(--amber)"></span></div><p>Plano de conteúdo e canais para atrair clientes: temas, ganchos, calendário e posts prontos.</p></div></div>
+    <div class="card persona reveal d2"><div class="pchip" style="background:var(--blue-t);color:var(--blue)">🔎</div><div><div class="nm">Pesquisa de Mercado <span class="dot" style="background:var(--blue)"></span></div><p>Mapeia mercado e concorrentes por fontes públicas; define segmentos e sugere posicionamento.</p></div></div>
+    <div class="card persona reveal d3"><div class="pchip" style="background:var(--green-t);color:var(--green)">🤝</div><div><div class="nm">Vendas / Prospecção <span class="dot" style="background:var(--green)"></span></div><p>Mapeia oportunidades públicas de captação e prioriza — <b style="color:#fff">o contato é sempre seu</b>.</p></div></div>
+  </div>
+  <div class="chips reveal d1 mt-m">
+    <span class="pill"><span class="dot" style="background:var(--violet-br)"></span> Humano sempre no controle</span>
+    <span class="pill"><span class="dot" style="background:var(--blue)"></span> Só fontes públicas</span>
+    <span class="pill"><span class="dot" style="background:var(--green)"></span> Trabalho à vista</span>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>A persona-piloto — inteligência de comunidades, em quatro camadas</div>
+  <p class="copy reveal">Aplicada à TopWeeks, a persona de Vendas/Prospecção faz o que pessoa não consegue em escala: monitora centenas de conversas públicas por semana e prioriza o que vale follow-up humano.</p>
+  <div class="grid g4 mt-s">
+    <div class="card reveal d1"><div class="idx">Camada 1</div><h3 class="mt-s">Coleta</h3><p>Busca em fontes públicas indexáveis — sem scraping de grupos fechados nem dados privados. Reclame Aqui, Reddit, YouTube, Tripadvisor, Mochileiros, comunidades públicas.</p></div>
+    <div class="card reveal d2"><div class="idx">Camada 2</div><h3 class="mt-s">Classificação</h3><p>Cada sinal em três eixos do playbook: <b style="color:#fff">intenção</b>, <b style="color:#fff">temperatura</b> e <b style="color:#fff">fit</b> com a TopWeeks.</p></div>
+    <div class="card reveal d3"><div class="idx">Camada 3</div><h3 class="mt-s">Enriquecimento &amp; priorização</h3><p>Um dossiê leve por oportunidade: link, trecho, perfil público, abordagem sugerida e score de prioridade.</p></div>
+    <div class="card reveal d4"><div class="idx">Camada 4</div><h3 class="mt-s">Suporte à ação humana</h3><p>O founder abre o painel, atua no canal certo, edita o script se quiser e registra o resultado — que realimenta o playbook.</p></div>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>Como um agente autônomo trabalha, de verdade</div>
+  <p class="copy reveal">Cada agente é um <b>loop de ferramentas</b>: raciocina, age, observa o resultado e repete — até concluir a tarefa.</p>
+  <div class="flow reveal d1 mt-s">
+    <div class="node"><span class="n">1</span><span class="t">Entende o contexto</span><span class="d">Lê o Perfil do Negócio e a memória do time.</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">2</span><span class="t">Raciocina</span><span class="d">Decide o próximo passo com um modelo de raciocínio.</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">3</span><span class="t">Usa ferramentas</span><span class="d">Busca em fontes públicas, consulta dados, salva na memória.</span></div>
+    <span class="arrow">→</span>
+    <div class="node"><span class="n">4</span><span class="t">Age e entrega</span><span class="d">Produz o entregável — e repete <span class="mono" style="color:var(--violet-br)">↻</span> até concluir.</span></div>
+  </div>
+  <p class="loop-note reveal">↻ limite de 16 passos por resposta · propõe antes de agir · contato externo é sempre do dono</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Arquitetura técnica</div>
+  <div class="chips reveal d1">
+    <span class="pill q">Next.js 15</span>
+    <span class="pill q">Vercel AI SDK</span>
+    <span class="pill q">Vercel Workflow · runs duráveis</span>
+    <span class="pill q">Vercel AI Gateway · roteamento de modelo</span>
+    <span class="pill q">tRPC</span>
+    <span class="pill q">Drizzle ORM</span>
+    <span class="pill q">Clerk</span>
+  </div>
+  <div class="grid g3 mt-m">
+    <div class="card reveal d1"><h3>Durável e ao vivo</h3><p>Cada tarefa vira um <b>run durável</b> (Vercel Workflow): várias personas em paralelo, streamadas no painel e resilientes a falhas.</p></div>
+    <div class="card reveal d2"><h3>Autônomo com guarda-corpos</h3><p><b>Propõe antes de agir.</b> Contato externo é sempre do dono. No piloto automático, reage a sinais dentro do que você autorizou.</p></div>
+    <div class="card reveal d3"><h3>Seguro por padrão</h3><p>Só http(s) público, com <b>bloqueio anti-SSRF</b>. Modelos roteados pelo AI Gateway — troca de modelo sem reescrever código.</p></div>
+  </div>
+
+  <div class="callout reveal d1 mt-l" style="background:linear-gradient(180deg,rgba(139,92,246,.13),rgba(139,92,246,.04))">
+    <p class="eyebrow" style="margin-bottom:10px">a camada autoral do grupo</p>
+    <p class="big" style="margin:0">O <span class="g">playbook de domínio</span> — as “skills” que dirigem cada agente. Não é a IA; é o <span class="g">conhecimento</span> que a guia.</p>
+    <p class="copy" style="max-width:none">O playbook não fica num PDF que ninguém abre: vira instrução operacional, em arquivos que descrevem quando cada regra se aplica, exemplos positivos e negativos colhidos em campo, e o passo a passo recomendado. <b>Vantagem dupla:</b> é legível pela banca e manutenível pelo founder depois do semestre — sem precisar programar.</p>
+  </div>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── DESCOBERTA (Marco 1) ────────────────────────────── -->
+<section class="section" id="descoberta">
+  <p class="eyebrow reveal"><span class="n">06</span> <span class="sep">/</span> a descoberta · marco 1</p>
+  <h2 class="reveal">43 sinais reais mudaram o que “sucesso” <span class="g">significa</span></h2>
+  <p class="lead reveal d1">Antes de automatizar, o grupo coletou e classificou <b>43 sinais reais</b> à mão, em fontes públicas, para validar o volume monitorável e alimentar os exemplos do playbook. O que apareceu não foi o esperado — e é justamente por isso que importa.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>O framework de classificação — três eixos</div>
+  <div class="grid g3">
+    <div class="card reveal d1">
+      <div class="top"><span class="tag v">eixo 1</span></div>
+      <h3 class="mt-s">Intenção</h3>
+      <p>O que a pessoa quer, de fato:</p>
+      <div class="chips" style="margin-top:.7em">
+        <span class="pill" style="border-color:rgba(255,100,103,.3)"><span class="dot" style="background:var(--red)"></span> vender cota</span>
+        <span class="pill" style="border-color:rgba(255,100,103,.3)"><span class="dot" style="background:var(--red)"></span> sair do contrato</span>
+        <span class="pill"><span class="dot" style="background:var(--green)"></span> alugar semana</span>
+        <span class="pill"><span class="dot" style="background:var(--faint)"></span> reclamar</span>
+        <span class="pill"><span class="dot" style="background:var(--faint)"></span> dúvida</span>
+      </div>
+    </div>
+    <div class="card reveal d2">
+      <div class="top"><span class="tag v">eixo 2</span></div>
+      <h3 class="mt-s">Temperatura</h3>
+      <p>Quão pronta para uma abordagem:</p>
+      <div class="chips" style="margin-top:.7em">
+        <span class="pill"><span class="dot" style="background:var(--blue)"></span> fria</span>
+        <span class="pill"><span class="dot" style="background:var(--amber)"></span> morna</span>
+        <span class="pill"><span class="dot" style="background:var(--red)"></span> quente</span>
+      </div>
+    </div>
+    <div class="card reveal d3">
+      <div class="top"><span class="tag v">eixo 3</span></div>
+      <h3 class="mt-s">Fit com a TopWeeks</h3>
+      <p>Quanto o produto atual resolve:</p>
+      <div class="chips" style="margin-top:.7em">
+        <span class="pill"><span class="dot" style="background:var(--green)"></span> fit direto</span>
+        <span class="pill"><span class="dot" style="background:var(--amber)"></span> fit parcial</span>
+        <span class="pill"><span class="dot" style="background:var(--faint)"></span> não-fit</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout reveal d1 mt-l" style="border-color:rgba(250,180,95,.35);background:linear-gradient(180deg,rgba(250,180,95,.10),rgba(250,180,95,.03))">
+    <p class="eyebrow" style="color:var(--amber);margin-bottom:12px">o achado</p>
+    <p class="big" style="margin:0">A intenção dominante entre donos de cota é <span style="color:var(--amber)">sair ou vender o contrato inteiro</span> — não alugar semanas ociosas. Há um <span style="color:var(--amber)">descompasso de fit</span> com o produto atual da TopWeeks.</p>
+    <p class="copy" style="max-width:none">Quando o agente retorna sobretudo <b>fit parcial</b> e <b>não-fit</b>, isso não é o agente falhando. É <b style="color:#fff">detecção precisa</b>: o mercado, de fato, quer majoritariamente a saída. Ler esse resultado como “desempenho ruim” seria ler errado o sinal.</p>
+  </div>
+
+  <p class="kick reveal d1">Esse é o ponto mais importante para comunicar à banca: um agente <b>funcionando corretamente</b> revela a verdade do mercado — mesmo quando ela contraria a hipótese inicial. O valor não está em confirmar o que se queria ouvir; está em <b>medir o que é</b>.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Três leituras estratégicas que o achado abre</div>
+  <div class="grid g3">
+    <div class="card reveal d1 hoverable">
+      <div class="top"><span class="idx">A</span></div>
+      <h3 class="mt-s">Aluguel como ponte</h3>
+      <p>Reposicionar o aluguel como alívio imediato para quem <b style="color:#fff">ainda não consegue sair</b> — monetizar semanas enquanto a saída não vem.</p>
+    </div>
+    <div class="card reveal d2 hoverable">
+      <div class="top"><span class="idx">B</span></div>
+      <h3 class="mt-s">Expandir o escopo</h3>
+      <p>Incluir <b style="color:#fff">revenda / saída assistida</b> no produto, atendendo a intenção que o mercado realmente expressa.</p>
+    </div>
+    <div class="card reveal d3 hoverable">
+      <div class="top"><span class="idx">C</span></div>
+      <h3 class="mt-s">Filtrar só o fit direto</h3>
+      <p>Manter o foco no aluguel e deixar o agente <b style="color:#fff">priorizar apenas sinais de fit direto</b> — menor volume, maior conversão.</p>
+    </div>
+  </div>
+  <p class="copy reveal d1">Essa é uma decisão em aberto — e é uma decisão de <b>produto e estratégia</b>, não de engenharia. O trabalho entrega o dado e as opções; a escolha do caminho é do founder, agora com evidência para fazê-la.</p>
+</section>
+
+<div class="divide"><hr></div>
+
+<!-- ── ENTREGA ─────────────────────────────────────────── -->
+<section class="section" id="entrega">
+  <p class="eyebrow reveal"><span class="n">07</span> <span class="sep">/</span> entrega</p>
+  <h2 class="reveal">O que ficou pronto — e o que fica como <span class="g">ativo</span></h2>
+  <p class="lead reveal d1">Quatro marcos progressivos guiaram o semestre, desenhados para que houvesse entregável funcional em cada etapa, mesmo se algo desse errado no caminho.</p>
+
+  <div class="subhead reveal"><span class="bar"></span>Os quatro marcos</div>
+  <div class="timeline">
+    <div class="tl-item done reveal d1">
+      <div class="tl-head"><span class="m">Marco 1</span><span class="ti">Validação manual do nicho</span><span class="status done">concluído</span></div>
+      <p>43 sinais reais coletados e classificados à mão em fontes públicas — volume monitorável confirmado, dataset de avaliação gerado, e a descoberta-chave sobre a intenção do mercado.</p>
+    </div>
+    <div class="tl-item done reveal d2">
+      <div class="tl-head"><span class="m">Marco 2</span><span class="ti">Playbook como skills</span><span class="status done">concluído</span></div>
+      <p>Conhecimento de domínio codificado em arquivos estruturados: critérios de intenção, temperatura e fit, perfis de oportunidade e scripts de abordagem. A camada autoral do grupo.</p>
+    </div>
+    <div class="tl-item live reveal d3">
+      <div class="tl-head"><span class="m">Marco 3</span><span class="ti">Agente funcional end-to-end</span><span class="status live">em operação</span></div>
+      <p>Produto rodando em <span class="mono" style="color:var(--violet-br)">tramasmb.vercel.app</span>: orquestrador CEO, personas, pipeline de coleta → classificação → priorização e painel para o founder.</p>
+    </div>
+    <div class="tl-item reveal d4">
+      <div class="tl-head"><span class="m">Marco 4</span><span class="ti">Operação com o founder</span><span class="status next">em andamento</span></div>
+      <p>Rodar o agente sobre os parâmetros reais da TopWeeks e acompanhar oportunidades detectadas, qualidade da classificação e abordagens feitas — os números que viram o coração da fase seguinte.</p>
+    </div>
+  </div>
+
+  <div class="subhead reveal"><span class="bar"></span>Os entregáveis do semestre</div>
+  <div class="grid g2">
+    <div class="card reveal d1"><div class="top"><span class="tag b">documento</span></div><h3 class="mt-s">Relatório de pesquisa — PMEs, redes sociais e IA</h3><p>Referencial de larga escala consolidando Sebrae, ABDI, IBGE, McKinsey, Bain, Conductor, Pew e DataReportal.</p></div>
+    <div class="card reveal d2"><div class="top"><span class="tag b">documento</span></div><h3 class="mt-s">Análise crítica da TopWeeks</h3><p>Diagnóstico de pontos fracos — site, modelo de negócio, diferenciação e redes — com matriz de severidade e recomendações priorizadas.</p></div>
+    <div class="card reveal d1"><div class="top"><span class="tag b">documento</span></div><h3 class="mt-s">Diagnóstico parcial + pesquisa exploratória</h3><p>Introdução, levantamento, origem do problema, público-alvo, relevância e as três hipóteses testáveis.</p></div>
+    <div class="card reveal d2"><div class="top"><span class="tag b">documento</span></div><h3 class="mt-s">Relato de brainstorming</h3><p>O registro honesto da divergência à convergência — cinco propostas e como cada uma entrou na arquitetura final.</p></div>
+    <div class="card reveal d1"><div class="top"><span class="tag v">produto</span></div><h3 class="mt-s">Trama, rodando</h3><p>O time de agentes no ar, com painel ao vivo e o pitch de apresentação. <span class="mono" style="color:var(--violet-br)">tramasmb.vercel.app</span></p></div>
+    <div class="card reveal d2"><div class="top"><span class="tag g">ativo</span></div><h3 class="mt-s">Playbook em skills + dataset</h3><p>O conhecimento de domínio destilado e os 43 sinais classificados — reutilizáveis, e generalizáveis para outros marketplaces P2P de nicho.</p></div>
+  </div>
+
+  <div class="callout reveal d1 mt-l">
+    <p class="eyebrow" style="margin-bottom:12px">síntese</p>
+    <p class="big" style="margin:0">Entregamos um diagnóstico concreto de um problema real, conectado a um padrão estrutural — e, dele, um <span class="g">produto rodando</span> com uma camada autoral defensável e uma descoberta de mercado que reorienta a estratégia.</p>
+    <p class="copy" style="max-width:none">A evidência de campo ainda amadurece com a operação. Mas o percurso está fechado de ponta a ponta: da pergunta ampla ao produto, passando por pesquisa, diagnóstico, hipóteses, construção e um achado que só apareceu porque medimos o mercado de verdade.</p>
+  </div>
+</section>
+
+</main>
+
+<!-- ── FOOTER ──────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="eyebrow reveal">você no comando, o time no trabalho</p>
+    <p class="wm-sm reveal d1">Trama<span class="d">.</span></p>
+    <p class="tag-close reveal d1">IA que trabalha pra você, não no seu lugar.</p>
+    <div class="rule"></div>
+    <div class="grid g2 reveal d1" style="align-items:end">
+      <div>
+        <p class="team-line" style="margin:0"><b>Enzo · Guilherme · João Gabriel · Nathan · Rafael</b></p>
+        <p class="small" style="margin-top:.5em">Laboratório de Empreendedorismo e Práticas Comunitárias — LEPC B · Prof. Kurt Molz<br>UNISC — Santa Cruz do Sul/RS · Entrega final: 01 de julho de 2026</p>
+      </div>
+      <div style="text-align:right">
+        <p class="small mono" style="color:var(--violet-br);margin:0">tramasmb.vercel.app</p>
+        <p class="small" style="margin-top:.4em">piloto TopWeeks · playbook em skills</p>
+        <p style="font-weight:700;font-size:clamp(15px,1.5vw,20px);letter-spacing:-.01em;margin-top:.7em">Obrigado.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── scroll progress ─────────────────────────── */
+  var bar = document.getElementById('progress');
+  function onScroll(){
+    var st = window.pageYOffset || document.documentElement.scrollTop;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h>0 ? (st/h*100) : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll); onScroll();
+
+  /* ── reveal on scroll ────────────────────────── */
+  var revs = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if(reduce || !('IntersectionObserver' in window)){
+    revs.forEach(function(el){el.classList.add('in');});
+  } else {
+    var ro = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); }
+      });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
+    revs.forEach(function(el){ ro.observe(el); });
+  }
+
+  /* ── active nav link ─────────────────────────── */
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navlinks a'));
+  var map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+  var sections = Object.keys(map).map(function(id){ return document.getElementById(id); }).filter(Boolean);
+  if('IntersectionObserver' in window){
+    var no = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(a){ a.classList.remove('on'); });
+          var a = map[e.target.id]; if(a) a.classList.add('on');
+        }
+      });
+    }, {rootMargin:'-45% 0px -50% 0px', threshold:0});
+    sections.forEach(function(s){ no.observe(s); });
+  }
+
+  /* ── ambient weave (32 senoidal threads, blend lighter) ── */
+  var cv = document.getElementById('weave'), ctx = cv.getContext('2d');
+  var w=0,h=0,t=0,raf=0, threads=32, baseHue=285-15;
+  function resize(){
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    w=cv.clientWidth; h=cv.clientHeight;
+    cv.width=Math.max(1,w*dpr); cv.height=Math.max(1,h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(reduce) draw();
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    ctx.globalCompositeOperation='lighter';
+    for(var n=0;n<threads;n++){
+      var p=n/threads, baseY=p*h, env=Math.sin(p*Math.PI), hueI=baseHue+p*55;
+      ctx.beginPath();
+      for(var x=0;x<=w;x+=8){
+        var y=baseY + Math.sin(x*0.006 + t*0.6 + n*0.5)*46*env + Math.sin(x*0.002 - t*0.32 + n)*22*env;
+        x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle='hsla('+hueI+',75%,66%,'+(0.05+env*0.12)+')';
+      ctx.lineWidth=1.1; ctx.stroke();
+    }
+    if(reduce) return;
+    t+=0.016; raf=requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); if(!reduce) draw();
+})();
+</script>
+</body>
+</html>
